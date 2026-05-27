@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GS2 Imports - Catálogo de Atacado</title>
+  <meta name="description" content="Catálogo online de perfumes importados e fragrâncias árabes premium da GS2 Imports. Preços de atacado com sugestão de revenda.">
+
+  <!-- Estilos customizados -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Ícones Modernos Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- FAIXA DE ANÚNCIO SUPERIOR -->
+  <div class="announcement-bar">
+    <span>🔥 GRUPO VIP DE ATACADO — NOVIDADES DIÁRIAS!</span>
+    <span>📦 ENVIAMOS PARA TODO O BRASIL</span>
+    <span>💬 SUPORTE WHATSAPP: (21) 96640-7570</span>
+  </div>
+
+  <!-- CABEÇALHO -->
+  <header>
+    <div class="header-container">
+      <!-- Barra de Pesquisa Rápida (Esquerda) -->
+      <div class="search-bar-container" id="search-container">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="search-input" class="search-input" placeholder="O que você está buscando?" aria-label="Buscar produtos">
+      </div>
+
+      <!-- Logo Central — GS2 IMPORTS -->
+      <a href="#" class="logo" id="logo-link" aria-label="GS2 Imports - Página inicial">
+        <div class="logo-brandname">
+          <span class="logo-gs">GS</span><span class="logo-num">2</span>
+        </div>
+        <div class="logo-sub">Imports</div>
+      </a>
+
+      <!-- Ações do Cabeçalho (Direita) -->
+      <div class="nav-actions">
+        <!-- Alternador de Tema -->
+        <button id="theme-toggle-btn" class="btn-icon-only" title="Alternar tema escuro/claro" aria-label="Alternar tema">
+          <i data-lucide="sun" id="theme-icon-sun"></i>
+          <i data-lucide="moon" id="theme-icon-moon" style="display: none;"></i>
+        </button>
+
+        <!-- Botão Painel Administrador -->
+        <button id="admin-view-toggle-btn" class="btn btn-secondary" title="Acessar painel administrativo">
+          <i data-lucide="settings"></i>
+          <span>Painel Admin</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL (CATÁLOGO) -->
+  <main id="catalog-view">
+    <!-- Hero Banner -->
+    <section class="hero-section">
+      <h1>
+        <span class="h1-gs">GS</span><span class="h1-2">2</span>
+        <span class="h1-imports"> IMPORTS</span>
+      </h1>
+      <p>Os melhores preços de atacado em Perfumes Importados e Fragrâncias Árabes Premium. Selecione as categorias abaixo e confira as novidades em tempo real.</p>
+    </section>
+
+    <!-- Controles (Categorias e Ordenação) -->
+    <section class="controls-bar">
+      <!-- Filtro de Categorias (Dinâmico) -->
+      <nav class="categories-container" id="categories-tabs" aria-label="Categorias de produtos">
+        <button class="category-tab active" data-category="all">Todos</button>
+        <!-- Injetado dinamicamente -->
+      </nav>
+
+      <!-- Ordenação -->
+      <div class="sort-select-wrapper">
+        <label for="sort-select">Ordenar por:</label>
+        <select id="sort-select" class="sort-select">
+          <option value="default">Relevância</option>
+          <option value="price-asc">Preço: Menor para Maior</option>
+          <option value="price-desc">Preço: Maior para Menor</option>
+          <option value="name-asc">Nome: A-Z</option>
+          <option value="name-desc">Nome: Z-A</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Grid de Exibição dos Produtos -->
+    <section class="product-grid" id="product-grid" aria-label="Lista de produtos">
+      <!-- Injetado dinamicamente via JavaScript -->
+    </section>
+  </main>
+
+  <!-- VISÃO ADMINISTRATIVA (PAINEL DE CADASTRO) -->
+  <main id="admin-view" style="display: none;">
+    <section class="admin-dashboard">
+      <div class="admin-header">
+        <div class="admin-title-group">
+          <h2>Painel Administrativo</h2>
+          <p>Cadastre, edite e exclua os produtos do catálogo GS2 Imports.</p>
+        </div>
+        <div class="admin-actions-bar" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button id="btn-reset-db" class="btn btn-secondary" style="border-color: var(--danger); color: var(--danger);" title="Restaurar catálogo padrão">
+            <i data-lucide="refresh-cw"></i>
+            <span>Restaurar Catálogo</span>
+          </button>
+          <button id="btn-add-product" class="btn btn-primary">
+            <i data-lucide="plus"></i>
+            <span>Novo Produto</span>
+          </button>
+          <button id="btn-back-to-catalog" class="btn btn-secondary">
+            <i data-lucide="arrow-left"></i>
+            <span>Voltar ao Catálogo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela de Produtos -->
+      <div class="admin-table-container">
+        <table class="admin-table" id="admin-table" aria-label="Tabela de produtos gerenciáveis">
+          <thead>
+            <tr>
+              <th>Foto</th>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Atacado</th>
+              <th>Sug. Venda</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="admin-products-list">
+            <!-- Injetado dinamicamente via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL DE DETALHES DO PRODUTO (VISITANTE) -->
+  <div class="modal-overlay" id="product-detail-modal">
+    <div class="modal-container">
+      <button class="btn-icon-only modal-close-btn" id="btn-close-detail-modal" aria-label="Fechar detalhes">
+        <i data-lucide="x"></i>
+      </button>
+
+      <div class="detail-grid">
+        <div class="detail-image-wrapper">
+          <img src="" alt="" class="detail-image" id="detail-product-image">
+        </div>
+        <div class="detail-info">
+          <span class="detail-category" id="detail-product-category">Categoria</span>
+          <h2 class="detail-title" id="detail-product-title">Nome do Produto</h2>
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem;">Valor Atacado</div>
+              <div class="detail-price" id="detail-product-price-wholesale">R$ 0,00</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem;">Sugestão de Venda</div>
+              <div class="detail-price" id="detail-product-price-suggested" style="color: var(--accent-blue);">R$ 0,00</div>
+            </div>
+          </div>
+          <p class="detail-desc" id="detail-product-description">Descrição longa do produto...</p>
+
+          <a href="#" target="_blank" class="btn btn-whatsapp" id="btn-whatsapp-contact" style="margin-top: 1rem;">
+            <i data-lucide="message-square"></i>
+            <span>Fazer pedido via WhatsApp</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE FORMULÁRIO DO PRODUTO (ADMIN - ADICIONAR / EDITAR) -->
+  <div class="modal-overlay" id="product-form-modal">
+    <div class="modal-container admin-form-modal">
+      <button class="btn-icon-only modal-close-btn" id="btn-close-form-modal" aria-label="Fechar formulário">
+        <i data-lucide="x"></i>
+      </button>
+
+      <h2 class="form-title" id="form-modal-title">Adicionar Novo Produto</h2>
+
+      <form id="product-form">
+        <!-- Campo oculto para ID em caso de edição -->
+        <input type="hidden" id="product-form-id">
+
+        <div class="form-body">
+          <!-- Nome do Produto -->
+          <div class="form-group">
+            <label for="product-name">Nome do Produto *</label>
+            <input type="text" id="product-name" class="form-control" placeholder="Ex: Lattafa Asad Zanzibar 100ml" required>
+          </div>
+
+          <!-- Categoria -->
+          <div class="form-group">
+            <label for="product-category">Categoria *</label>
+            <input type="text" id="product-category" class="form-control" placeholder="Ex: Perfumes Árabes" list="categories-datalist" required>
+            <datalist id="categories-datalist">
+              <!-- Populado via Javascript -->
+            </datalist>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Valor Atacado -->
+            <div class="form-group">
+              <label for="product-price-wholesale">Valor Atacado (R$) *</label>
+              <input type="number" id="product-price-wholesale" class="form-control" placeholder="0,00" step="0.01" min="0" required>
+            </div>
+
+            <!-- Sugestão de Venda -->
+            <div class="form-group">
+              <label for="product-price-suggested">Sugestão de Venda (R$) *</label>
+              <input type="number" id="product-price-suggested" class="form-control" placeholder="0,00" step="0.01" min="0" required>
+            </div>
+          </div>
+
+          <!-- Descrição -->
+          <div class="form-group">
+            <label for="product-desc">Descrição *</label>
+            <textarea id="product-desc" class="form-control" placeholder="Descreva as notas olfativas, volume e características do produto..." required></textarea>
+          </div>
+
+          <!-- Upload de Imagem -->
+          <div class="form-group">
+            <label>Imagem do Produto *</label>
+            <div class="image-upload-zone" id="image-upload-zone">
+              <i data-lucide="upload-cloud" class="upload-icon"></i>
+              <div class="upload-instructions">
+                <p>Clique ou arraste a imagem do produto aqui</p>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Suporta JPG, PNG ou WEBP</span>
+              </div>
+              <input type="file" id="product-image-file" accept="image/*">
+            </div>
+
+            <!-- Preview da Imagem -->
+            <div class="upload-preview-container" id="upload-preview-container">
+              <button type="button" class="remove-preview-btn" id="btn-remove-preview" title="Remover imagem">&times;</button>
+              <img src="" alt="Preview" class="upload-preview" id="image-preview-element">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-form">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-form">Salvar Produto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTAINER DE AVISOS (TOAST) -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- RODAPÉ -->
+  <footer>
+    <p>&copy; 2026 <strong>GS2 Imports</strong> — Catálogo de Perfumes Importados e Fragrâncias Árabes Premium.</p>
+  </footer>
+
+  <!-- Carregamento dos scripts de lógica -->
+  <script src="mock-data.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
