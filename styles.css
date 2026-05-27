@@ -406,12 +406,18 @@ main {
    ========================================== */
 .controls-bar {
   display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 1.25rem;
+}
+
+.controls-bar-row {
+  display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 1.5rem;
-  border-bottom: 1px solid var(--card-border);
-  padding-bottom: 1.25rem;
+  gap: 1rem;
 }
 
 .categories-container {
@@ -1155,6 +1161,178 @@ footer a:hover {
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   transform: rotate(-4deg);
+}
+
+/* ==========================================
+   BUSCA DE IMAGENS — GALERIA DO FORMULÁRIO
+   ========================================== */
+.img-search-results-grid {
+  background: var(--base-bg);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  max-height: 380px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.img-search-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.img-search-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.img-search-header {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+.img-search-msg {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.img-search-msg--error {
+  color: var(--danger);
+}
+
+.img-search-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.img-search-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.img-search-item:hover {
+  border-color: var(--accent-blue);
+  transform: scale(1.04);
+  box-shadow: 0 4px 16px var(--accent-blue-glow);
+  z-index: 2;
+}
+
+.img-search-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.img-search-item:hover img {
+  opacity: 0.88;
+}
+
+/* Overlay "Selecionar" ao passar o mouse */
+.img-search-item::after {
+  content: "Selecionar";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(43, 127, 212, 0.85);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.img-search-item:hover::after {
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .img-search-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================
+   GÊnERO — FILTROS DA BARRA DE CONTROLES
+   ========================================== */
+.gender-tabs-container {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.gender-filter-tab {
+  padding: 0.4rem 0.9rem;
+  border-radius: 2rem;
+  border: 1.5px solid var(--card-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.gender-filter-tab:hover {
+  color: var(--text-main);
+  border-color: var(--text-main);
+}
+
+/* Todos — ativo */
+.gender-filter-tab--all.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Masculino — ativo */
+.gender-filter-tab--masculino.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+/* Feminino — ativo */
+.gender-filter-tab--feminino.active {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+[data-theme="dark"] .gender-filter-tab--all.active {
+  background: #fff;
+  border-color: #fff;
+  color: var(--primary);
 }
 
 /* ==========================================

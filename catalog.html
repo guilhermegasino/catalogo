@@ -64,22 +64,29 @@
 
     <!-- Controles (Categorias e Ordenação) -->
     <section class="controls-bar">
-      <!-- Filtro de Categorias (Dinâmico) -->
-      <nav class="categories-container" id="categories-tabs" aria-label="Categorias de produtos">
-        <button class="category-tab active" data-category="all">Todos</button>
-        <!-- Injetado dinamicamente -->
-      </nav>
+      <!-- Linha 1: Categorias + Ordenação -->
+      <div class="controls-bar-row">
+        <nav class="categories-container" id="categories-tabs" aria-label="Categorias de produtos">
+          <button class="category-tab active" data-category="all">Todos</button>
+          <!-- Injetado dinamicamente -->
+        </nav>
+        <div class="sort-select-wrapper">
+          <label for="sort-select">Ordenar por:</label>
+          <select id="sort-select" class="sort-select">
+            <option value="default">Relevância</option>
+            <option value="price-asc">Preço: Menor para Maior</option>
+            <option value="price-desc">Preço: Maior para Menor</option>
+            <option value="name-asc">Nome: A-Z</option>
+            <option value="name-desc">Nome: Z-A</option>
+          </select>
+        </div>
+      </div>
 
-      <!-- Ordenação -->
-      <div class="sort-select-wrapper">
-        <label for="sort-select">Ordenar por:</label>
-        <select id="sort-select" class="sort-select">
-          <option value="default">Relevância</option>
-          <option value="price-asc">Preço: Menor para Maior</option>
-          <option value="price-desc">Preço: Maior para Menor</option>
-          <option value="name-asc">Nome: A-Z</option>
-          <option value="name-desc">Nome: Z-A</option>
-        </select>
+      <!-- Linha 2: Filtro de Gênero -->
+      <div class="controls-bar-row">
+        <nav class="gender-tabs-container" id="gender-tabs" aria-label="Filtro por gênero">
+          <!-- Injetado dinamicamente -->
+        </nav>
       </div>
     </section>
 
@@ -255,7 +262,34 @@
 
           <!-- Upload de Imagem -->
           <div class="form-group">
-            <label>Imagem do Produto *</label>
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+              <label style="margin:0;">Imagem do Produto *</label>
+              <button type="button" id="btn-search-images" class="btn btn-secondary btn-sm" title="Buscar imagens automaticamente pelo nome do produto">
+                <i data-lucide="image-search" style="width:15px;height:15px;"></i>
+                <span>Buscar Imagens</span>
+              </button>
+            </div>
+
+            <!-- Painel de Busca de Imagens -->
+            <div id="image-search-panel" style="display:none; margin-bottom:0.75rem;">
+              <!-- Seção da chave API -->
+              <div id="pexels-key-section" style="display:none; background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:var(--border-radius); padding:1rem; margin-bottom:0.75rem;">
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                  🔑 Para buscar imagens, você precisa de uma chave gratuita do <strong>Pexels</strong>.<br>
+                  <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--accent-blue);">Criar conta gratuita em pexels.com/api →</a>
+                </p>
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="text" id="pexels-api-key-input" class="form-control" placeholder="Cole sua chave API aqui..." style="flex:1; font-size:0.8rem;">
+                  <button type="button" id="btn-save-pexels-key" class="btn btn-primary btn-sm">
+                    <i data-lucide="save" style="width:14px;height:14px;"></i> Salvar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Grid de Resultados -->
+              <div id="image-search-results" class="img-search-results-grid"></div>
+            </div>
+
             <div class="image-upload-zone" id="image-upload-zone">
               <i data-lucide="upload-cloud" class="upload-icon"></i>
               <div class="upload-instructions">

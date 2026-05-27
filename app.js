@@ -97,6 +97,7 @@ const WHATSAPP_NUMBER = "5521966407570"; // Substituir pelo número real (DDI + 
 let allProducts = [];
 let filteredProducts = [];
 let currentCategory = "all";
+let currentGender   = "all";
 let currentSearch = "";
 let currentSort = "default";
 let uploadedImageFile = null;
@@ -120,6 +121,7 @@ const dom = {
   
   // Controles do Catálogo
   categoriesTabs: document.getElementById("categories-tabs"),
+  genderTabs: document.getElementById("gender-tabs"),
   sortSelect: document.getElementById("sort-select"),
   productGrid: document.getElementById("product-grid"),
   
@@ -180,6 +182,14 @@ const dom = {
   productDesc: document.getElementById("product-desc"),
   btnCancelForm: document.getElementById("btn-cancel-form"),
   
+  // Busca de Imagens
+  btnSearchImages: document.getElementById("btn-search-images"),
+  imageSearchPanel: document.getElementById("image-search-panel"),
+  imageSearchResults: document.getElementById("image-search-results"),
+  pexelsKeySection: document.getElementById("pexels-key-section"),
+  pexelsApiKeyInput: document.getElementById("pexels-api-key-input"),
+  btnSavePexelsKey: document.getElementById("btn-save-pexels-key"),
+
   // Zona de Upload de Imagem
   imageUploadZone: document.getElementById("image-upload-zone"),
   productImageFile: document.getElementById("product-image-file"),
@@ -276,6 +286,11 @@ function applyFiltersAndRender() {
     filteredProducts = allProducts.filter(p => p.category.toLowerCase() === currentCategory.toLowerCase());
   }
 
+  // 1b. Filtrar por Gênero
+  if (currentGender !== "all") {
+    filteredProducts = filteredProducts.filter(p => (p.gender || "") === currentGender);
+  }
+
   // 2. Filtrar por Busca Textual
   if (currentSearch.trim() !== "") {
     const searchLower = currentSearch.toLowerCase();
@@ -298,6 +313,7 @@ function applyFiltersAndRender() {
   // Renderizar
   renderCatalogGrid();
   renderCategoryTabs();
+  renderGenderTabs();
   
   if (dom.adminView.style.display !== "none") {
     renderAdminProductsList();
@@ -415,10 +431,7 @@ function renderCatalogGrid() {
 
 // Renderiza os botões/pílulas de categoria dinamicamente
 function renderCategoryTabs() {
-  // Extrai categorias exclusivas dos produtos reais cadastrados
   const uniqueCategories = ["all", ...new Set(allProducts.map(p => p.category.trim()))];
-  
-  // Limpa apenas os gerados dinamicamente, mantendo o botão "Todos" fixo
   dom.categoriesTabs.innerHTML = "";
 
   uniqueCategories.forEach(cat => {
@@ -426,16 +439,35 @@ function renderCategoryTabs() {
     button.className = `category-tab ${currentCategory.toLowerCase() === cat.toLowerCase() ? "active" : ""}`;
     button.setAttribute("data-category", cat);
     button.textContent = cat === "all" ? "Todos" : cat;
-
     button.addEventListener("click", () => {
       currentCategory = cat;
-      // Adiciona estilo ativo e remove dos outros
-      document.querySelectorAll(".category-tab").forEach(tab => tab.classList.remove("active"));
-      button.classList.add("active");
       applyFiltersAndRender();
     });
-
     dom.categoriesTabs.appendChild(button);
+  });
+}
+
+// Renderiza os botões de filtro por gênero
+function renderGenderTabs() {
+  if (!dom.genderTabs) return;
+  dom.genderTabs.innerHTML = "";
+
+  const options = [
+    { value: "all",       label: "Todos" },
+    { value: "Masculino", label: "\u2642 Masculino" },
+    { value: "Feminino",  label: "\u2640 Feminino" }
+  ];
+
+  options.forEach(opt => {
+    const button = document.createElement("button");
+    button.className = `gender-filter-tab gender-filter-tab--${opt.value.toLowerCase()} ${currentGender === opt.value ? "active" : ""}`;
+    button.setAttribute("data-gender", opt.value);
+    button.textContent = opt.label;
+    button.addEventListener("click", () => {
+      currentGender = opt.value;
+      applyFiltersAndRender();
+    });
+    dom.genderTabs.appendChild(button);
   });
 }
 
@@ -649,6 +681,120 @@ function removeSelectedImage() {
   dom.productImageFile.value = "";
   dom.imageUploadZone.style.display = "flex";
   dom.uploadPreviewContainer.style.display = "none";
+}
+
+// ==========================================
+// BUSCA AUTOMÁTICA DE IMAGENS (PEXELS API)
+// ==========================================
+const PEXELS_KEY_STORAGE = "gs2_pexels_api_key";
+
+function getPexelsKey() {
+  return localStorage.getItem(PEXELS_KEY_STORAGE) || "";
+}
+
+function savePexelsKey() {
+  const key = dom.pexelsApiKeyInput.value.trim();
+  if (!key) {
+    showToast("Cole sua chave da API do Pexels.", "error");
+    return;
+  }
+  localStorage.setItem(PEXELS_KEY_STORAGE, key);
+  dom.pexelsKeySection.style.display = "none";
+  showToast("Chave salva! Buscando imagens...", "success");
+  const name = dom.productName.value.trim();
+  doImageSearch(name, key);
+}
+
+async function searchProductImages() {
+  const productName = dom.productName.value.trim();
+  if (!productName) {
+    showToast("Digite o nome do produto antes de buscar imagens.", "error");
+    return;
+  }
+
+  const apiKey = getPexelsKey();
+  dom.imageSearchPanel.style.display = "block";
+
+  if (!apiKey) {
+    dom.pexelsKeySection.style.display = "block";
+    dom.imageSearchResults.innerHTML = "";
+    return;
+  }
+
+  await doImageSearch(productName, apiKey);
+}
+
+async function doImageSearch(query, apiKey) {
+  dom.pexelsKeySection.style.display = "none";
+  dom.imageSearchResults.innerHTML = `
+    <div class="img-search-loading">
+      <i data-lucide="loader-2" class="img-search-spinner"></i>
+      <span>Buscando imagens para <em>${escapeHTML(query)}</em>...</span>
+    </div>`;
+  if (typeof lucide !== "undefined") lucide.createIcons();
+
+  // Usa o nome do produto como query; adiciona "perfume" se não estiver lá
+  const searchTerm = /perfume|fragr|eau de|cologne/i.test(query) ? query : query + " perfume";
+
+  try {
+    const resp = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerm)}&per_page=12&orientation=square`,
+      { headers: { Authorization: apiKey } }
+    );
+
+    if (resp.status === 401) {
+      localStorage.removeItem(PEXELS_KEY_STORAGE);
+      dom.imageSearchResults.innerHTML = `<p class="img-search-msg img-search-msg--error">❌ Chave de API inválida. Por favor, insira uma chave válida.</p>`;
+      dom.pexelsKeySection.style.display = "block";
+      return;
+    }
+    if (!resp.ok) throw new Error("Erro na requisição");
+
+    const data = await resp.json();
+    renderImageSearchResults(data.photos, query);
+  } catch (err) {
+    dom.imageSearchResults.innerHTML = `<p class="img-search-msg img-search-msg--error">⚠️ Falha ao buscar imagens. Verifique sua conexão e tente novamente.</p>`;
+  }
+}
+
+function renderImageSearchResults(photos, query) {
+  if (!photos || photos.length === 0) {
+    dom.imageSearchResults.innerHTML = `<p class="img-search-msg">Nenhuma imagem encontrada para "${escapeHTML(query)}". Tente ajustar o nome do produto.</p>`;
+    return;
+  }
+
+  dom.imageSearchResults.innerHTML = `<p class="img-search-header">Clique em uma imagem para selecionar (${photos.length} resultados)</p>`;
+
+  const grid = document.createElement("div");
+  grid.className = "img-search-grid";
+
+  photos.forEach(photo => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "img-search-item";
+
+    const img = document.createElement("img");
+    img.src = photo.src.medium;
+    img.alt = photo.alt || "Imagem do produto";
+    img.loading = "lazy";
+    img.title = "Clique para selecionar";
+
+    wrapper.appendChild(img);
+    wrapper.addEventListener("click", () => selectSearchImage(photo.src.large2x || photo.src.large, photo.alt || ""));
+    grid.appendChild(wrapper);
+  });
+
+  dom.imageSearchResults.appendChild(grid);
+}
+
+function selectSearchImage(url, alt) {
+  // Armazena a URL como string (já suportado pelo getProductImageUrl)
+  uploadedImageFile = url;
+  dom.imagePreviewElement.src = url;
+  dom.imagePreviewElement.alt = alt;
+  dom.imageUploadZone.style.display = "none";
+  dom.uploadPreviewContainer.style.display = "block";
+  dom.imageSearchPanel.style.display = "none";
+  showToast("Imagem selecionada com sucesso!", "success");
 }
 
 // Ação de Salvar Formulário
@@ -929,6 +1075,10 @@ function setupEventListeners() {
       handleImageSelection(e.target.files[0]);
     }
   });
+
+  // Busca automática de imagens
+  dom.btnSearchImages.addEventListener("click", searchProductImages);
+  dom.btnSavePexelsKey.addEventListener("click", savePexelsKey);
 
   // Remover Preview de Imagem
   dom.btnRemovePreview.addEventListener("click", removeSelectedImage);
