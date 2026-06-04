@@ -327,10 +327,8 @@ async function handleFormSubmit(event) {
 
     if (id) {
       productData.id = id;
-      await CatalogDB.update(productData);
-    } else {
-      await CatalogDB.save(productData);
     }
+    await CatalogDB.save(productData);
 
     document.getElementById("product-form-modal").classList.remove("active");
     showToast(id ? "Produto atualizado com sucesso!" : "Produto adicionado com sucesso!");
