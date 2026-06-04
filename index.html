@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="dark">
+<html lang="pt-BR" data-theme="light">
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GS2 Imports - Catálogo de Atacado</title>
@@ -15,11 +16,7 @@
 <body>
 
   <!-- FAIXA DE ANÚNCIO SUPERIOR -->
-  <div class="announcement-bar">
-    <span>🔥 GRUPO VIP DE ATACADO — NOVIDADES DIÁRIAS!</span>
-    <span>📦 ENVIAMOS PARA TODO O BRASIL</span>
-    <span>💬 SUPORTE WHATSAPP: (21) 96640-7570</span>
-  </div>
+  <div class="announcement-bar"></div>
 
   <!-- CABEÇALHO -->
   <header>
@@ -32,20 +29,11 @@
 
       <!-- Logo Central — GS2 IMPORTS -->
       <a href="#" class="logo" id="logo-link" aria-label="GS2 Imports - Página inicial">
-        <div class="logo-brandname">
-          <span class="logo-gs">GS</span><span class="logo-num">2</span>
-        </div>
-        <div class="logo-sub">Imports</div>
+        <img src="logo-transparent.png" alt="GS2 Imports" class="logo-img">
       </a>
 
       <!-- Ações do Cabeçalho (Direita) -->
       <div class="nav-actions">
-        <!-- Alternador de Tema -->
-        <button id="theme-toggle-btn" class="btn-icon-only" title="Alternar tema escuro/claro" aria-label="Alternar tema">
-          <i data-lucide="sun" id="theme-icon-sun"></i>
-          <i data-lucide="moon" id="theme-icon-moon" style="display: none;"></i>
-        </button>
-
         <!-- Botão Painel Administrador -->
         <button id="admin-view-toggle-btn" class="btn btn-secondary" title="Acessar painel administrativo">
           <i data-lucide="settings"></i>
@@ -59,37 +47,52 @@
   <main id="catalog-view">
     <!-- Hero Banner -->
     <section class="hero-section">
-      <h1>
-        <span class="h1-gs">GS</span><span class="h1-2">2</span>
-        <span class="h1-imports"> IMPORTS</span>
-      </h1>
-      <p>Os melhores preços de atacado em Perfumes Importados e Fragrâncias Árabes Premium. Selecione as categorias abaixo e confira as novidades em tempo real.</p>
+      <img src="hero-bg.png" alt="GS2 Imports — Perfumes Árabes Premium" class="hero-img">
     </section>
 
     <!-- Controles (Categorias e Ordenação) -->
     <section class="controls-bar">
-      <!-- Filtro de Categorias (Dinâmico) -->
-      <nav class="categories-container" id="categories-tabs" aria-label="Categorias de produtos">
-        <button class="category-tab active" data-category="all">Todos</button>
-        <!-- Injetado dinamicamente -->
-      </nav>
+      <!-- Linha 1: Categorias + Ordenação -->
+      <div class="controls-bar-row">
+        <div class="filter-group">
+          <span class="filter-group-label">Categoria</span>
+          <nav class="categories-container" id="categories-tabs" aria-label="Categorias de produtos">
+            <button class="category-tab active" data-category="all">Todos</button>
+          </nav>
+        </div>
+        <div class="sort-select-wrapper">
+          <label for="sort-select">Ordenar por:</label>
+          <select id="sort-select" class="sort-select">
+            <option value="default">Relevância</option>
+            <option value="price-asc">Preço: Menor para Maior</option>
+            <option value="price-desc">Preço: Maior para Menor</option>
+            <option value="name-asc">Nome: A-Z</option>
+            <option value="name-desc">Nome: Z-A</option>
+          </select>
+        </div>
+      </div>
 
-      <!-- Ordenação -->
-      <div class="sort-select-wrapper">
-        <label for="sort-select">Ordenar por:</label>
-        <select id="sort-select" class="sort-select">
-          <option value="default">Relevância</option>
-          <option value="price-asc">Preço: Menor para Maior</option>
-          <option value="price-desc">Preço: Maior para Menor</option>
-          <option value="name-asc">Nome: A-Z</option>
-          <option value="name-desc">Nome: Z-A</option>
-        </select>
+      <!-- Linha 2: Filtro de Gênero -->
+      <div class="controls-bar-row controls-bar-row--sub">
+        <div class="filter-group">
+          <span class="filter-group-label">Gênero</span>
+          <nav class="gender-tabs-container" id="gender-tabs" aria-label="Filtro por gênero">
+          </nav>
+        </div>
+      </div>
+
+      <!-- Linha 3: Filtro de Marca -->
+      <div class="controls-bar-row controls-bar-row--sub" id="brand-filter-row" style="display:none;">
+        <div class="filter-group">
+          <span class="filter-group-label">Marca</span>
+          <nav class="brand-filter-container" id="brand-filter-tabs" aria-label="Filtro por marca">
+          </nav>
+        </div>
       </div>
     </section>
 
     <!-- Grid de Exibição dos Produtos -->
     <section class="product-grid" id="product-grid" aria-label="Lista de produtos">
-      <!-- Injetado dinamicamente via JavaScript -->
     </section>
   </main>
 
@@ -101,7 +104,7 @@
           <h2>Painel Administrativo</h2>
           <p>Cadastre, edite e exclua os produtos do catálogo GS2 Imports.</p>
         </div>
-        <div class="admin-actions-bar" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="admin-actions-bar" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
           <button id="btn-reset-db" class="btn btn-secondary" style="border-color: var(--danger); color: var(--danger);" title="Restaurar catálogo padrão">
             <i data-lucide="refresh-cw"></i>
             <span>Restaurar Catálogo</span>
@@ -110,9 +113,17 @@
             <i data-lucide="plus"></i>
             <span>Novo Produto</span>
           </button>
-          <button id="btn-back-to-catalog" class="btn btn-secondary">
+          <button id="btn-back-to-catalog" class="btn btn-secondary" style="border-color: var(--accent-blue); color: var(--accent-blue);">
             <i data-lucide="arrow-left"></i>
             <span>Voltar ao Catálogo</span>
+          </button>
+          <button id="btn-change-password" class="btn btn-secondary" title="Alterar senha de acesso" style="border-color: var(--accent-blue); color: var(--accent-blue);">
+            <i data-lucide="key-round"></i>
+            <span>Alterar Senha</span>
+          </button>
+          <button id="btn-admin-logout" class="btn btn-secondary" style="border-color: var(--danger); color: var(--danger);" title="Encerrar sessão administrativa">
+            <i data-lucide="log-out"></i>
+            <span>Sair</span>
           </button>
         </div>
       </div>
@@ -120,18 +131,19 @@
       <!-- Tabela de Produtos -->
       <div class="admin-table-container">
         <table class="admin-table" id="admin-table" aria-label="Tabela de produtos gerenciáveis">
-          <thead>
+          <thead id="admin-table-head">
             <tr>
               <th>Foto</th>
-              <th>Nome</th>
+              <th class="admin-th-sort" data-sort="name">Nome <span class="sort-icon">↕</span></th>
               <th>Categoria</th>
-              <th>Atacado</th>
-              <th>Sug. Venda</th>
+              <th class="admin-th-sort" data-sort="priceLastPurchase">Últ. Compra <span class="sort-icon">↕</span></th>
+              <th class="admin-th-sort" data-sort="priceWholesale">Atacado <span class="sort-icon">↕</span></th>
+              <th class="admin-th-sort" data-sort="priceSuggested">Sug. Venda <span class="sort-icon">↕</span></th>
+              <th class="admin-th-sort" data-sort="quantity">Qtd. <span class="sort-icon">↕</span></th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="admin-products-list">
-            <!-- Injetado dinamicamente via JavaScript -->
           </tbody>
         </table>
       </div>
@@ -193,20 +205,74 @@
             <input type="text" id="product-name" class="form-control" placeholder="Ex: Lattafa Asad Zanzibar 100ml" required>
           </div>
 
+          <!-- Marca -->
+          <div class="form-group">
+            <label>Marca</label>
+            <div class="brand-section">
+              <button type="button" id="btn-add-brand" class="btn btn-secondary brand-add-btn">
+                <i data-lucide="tag" style="width:13px;height:13px;"></i>
+                Cadastrar Marca
+              </button>
+              <div class="brand-chips-container" id="brand-chips-container">
+                <span class="brand-placeholder">Nenhuma marca cadastrada</span>
+              </div>
+            </div>
+            <input type="hidden" id="product-brand">
+          </div>
+
           <!-- Categoria -->
           <div class="form-group">
-            <label for="product-category">Categoria *</label>
-            <input type="text" id="product-category" class="form-control" placeholder="Ex: Perfumes Árabes" list="categories-datalist" required>
-            <datalist id="categories-datalist">
-              <!-- Populado via Javascript -->
-            </datalist>
+            <label>Categoria *</label>
+            <div class="brand-section">
+              <button type="button" id="btn-add-category" class="btn btn-secondary brand-add-btn">
+                <i data-lucide="folder-plus" style="width:13px;height:13px;"></i>
+                Cadastrar Categoria
+              </button>
+              <div class="brand-chips-container" id="category-chips-container">
+                <span class="brand-placeholder">Nenhuma categoria cadastrada</span>
+              </div>
+            </div>
+            <input type="hidden" id="product-category">
+          </div>
+
+          <!-- Gênero -->
+          <div class="form-group">
+            <label>Gênero</label>
+            <div class="gender-toggle-group">
+              <button type="button" class="gender-btn" id="btn-gender-masc" data-gender="Masculino">
+                <i data-lucide="mars" style="width:14px;height:14px;"></i> Masculino
+              </button>
+              <button type="button" class="gender-btn" id="btn-gender-fem" data-gender="Feminino">
+                <i data-lucide="venus" style="width:14px;height:14px;"></i> Feminino
+              </button>
+            </div>
+            <input type="hidden" id="product-gender">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Último Preço de Compra -->
+            <div class="form-group">
+              <label for="product-price-last-purchase">Último Preço de Compra (R$)</label>
+              <input type="number" id="product-price-last-purchase" class="form-control" placeholder="0,00" step="0.01" min="0">
+            </div>
+
             <!-- Valor Atacado -->
             <div class="form-group">
               <label for="product-price-wholesale">Valor Atacado (R$) *</label>
               <input type="number" id="product-price-wholesale" class="form-control" placeholder="0,00" step="0.01" min="0" required>
+              <small style="display:block; margin-top:0.25rem; font-size:0.7rem; color: var(--text-muted);">Calculado automaticamente (+10% sobre o último preço de compra). Você pode ajustar manualmente.</small>
+            </div>
+
+            <!-- Valor Médio de Mercado -->
+            <div class="form-group">
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
+                <label for="product-price-market-avg" style="margin-bottom:0;">Valor Médio de Mercado (R$)</label>
+                <button type="button" id="btn-google-shopping" title="Pesquisar no Google Shopping" style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.55rem;font-size:0.68rem;font-weight:700;border-radius:4px;border:1px solid var(--accent-blue);color:var(--accent-blue);background:transparent;cursor:pointer;transition:all 0.2s;white-space:nowrap;">
+                  <i data-lucide="shopping-cart" style="width:11px;height:11px;"></i>
+                  Google Shopping
+                </button>
+              </div>
+              <input type="number" id="product-price-market-avg" class="form-control" placeholder="0,00" step="0.01" min="0">
             </div>
 
             <!-- Sugestão de Venda -->
@@ -214,6 +280,12 @@
               <label for="product-price-suggested">Sugestão de Venda (R$) *</label>
               <input type="number" id="product-price-suggested" class="form-control" placeholder="0,00" step="0.01" min="0" required>
             </div>
+          </div>
+
+          <!-- Quantidade -->
+          <div class="form-group">
+            <label for="product-quantity">Quantidade em Estoque</label>
+            <input type="number" id="product-quantity" class="form-control" placeholder="0" step="1" min="0">
           </div>
 
           <!-- Descrição -->
@@ -225,16 +297,55 @@
           <!-- Upload de Imagem -->
           <div class="form-group">
             <label>Imagem do Produto *</label>
-            <div class="image-upload-zone" id="image-upload-zone">
-              <i data-lucide="upload-cloud" class="upload-icon"></i>
-              <div class="upload-instructions">
-                <p>Clique ou arraste a imagem do produto aqui</p>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">Suporta JPG, PNG ou WEBP</span>
-              </div>
-              <input type="file" id="product-image-file" accept="image/*">
+
+            <!-- Abas: Upload de arquivo | Colar link -->
+            <div class="img-mode-tabs">
+              <button type="button" class="img-mode-tab active" id="tab-upload" data-tab="upload">
+                <i data-lucide="upload-cloud" style="width:14px;height:14px;"></i>
+                Fazer upload
+              </button>
+              <button type="button" class="img-mode-tab" id="tab-url" data-tab="url">
+                <i data-lucide="link" style="width:14px;height:14px;"></i>
+                Colar link
+              </button>
             </div>
 
-            <!-- Preview da Imagem -->
+            <!-- Painel: Upload de arquivo -->
+            <div id="panel-upload">
+              <div class="image-upload-zone" id="image-upload-zone">
+                <i data-lucide="upload-cloud" class="upload-icon"></i>
+                <div class="upload-instructions">
+                  <p>Clique ou arraste a imagem do produto aqui</p>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Suporta JPG, PNG ou WEBP</span>
+                </div>
+                <input type="file" id="product-image-file" accept="image/*">
+              </div>
+            </div>
+
+            <!-- Painel: Colar link de URL -->
+            <div id="panel-url" style="display:none;">
+              <div class="url-input-wrapper">
+                <i data-lucide="link" class="url-input-icon"></i>
+                <input
+                  type="url"
+                  id="product-image-url"
+                  class="form-control url-input-field"
+                  placeholder="Cole o link da imagem aqui (ex: https://...)"
+                  autocomplete="off"
+                >
+                <button type="button" id="btn-load-url-image" class="btn btn-primary url-load-btn">
+                  <i data-lucide="check" style="width:15px;height:15px;"></i>
+                  Carregar
+                </button>
+              </div>
+              <p id="url-image-error" class="url-image-error" style="display:none;"></p>
+              <p style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.5;">
+                <i data-lucide="info" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"></i>
+                Dica: No Google ou site do fornecedor, clique com o botão direito na foto → <strong>"Copiar endereço da imagem"</strong> e cole aqui.
+              </p>
+            </div>
+
+            <!-- Preview da Imagem (compartilhado entre os dois modos) -->
             <div class="upload-preview-container" id="upload-preview-container">
               <button type="button" class="remove-preview-btn" id="btn-remove-preview" title="Remover imagem">&times;</button>
               <img src="" alt="Preview" class="upload-preview" id="image-preview-element">
@@ -246,6 +357,78 @@
           <button type="button" class="btn btn-secondary" id="btn-cancel-form">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btn-submit-form">Salvar Produto</button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE LOGIN ADMINISTRATIVO -->
+  <div class="modal-overlay" id="admin-login-modal">
+    <div class="modal-container" style="max-width: 420px;">
+      <button class="btn-icon-only modal-close-btn" id="btn-close-login-modal" aria-label="Fechar login">
+        <i data-lucide="x"></i>
+      </button>
+
+      <div style="text-align: center; margin-bottom: 1.75rem;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent-blue-glow); margin-bottom: 1rem;">
+          <i data-lucide="shield-check" style="width: 32px; height: 32px; color: var(--accent-blue);"></i>
+        </div>
+        <h2 style="font-family: var(--font-heading); font-size: 1.3rem; margin-bottom: 0.4rem;">Acesso Administrativo</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Digite a senha para acessar o painel.</p>
+      </div>
+
+      <form id="admin-login-form">
+        <div class="form-group" style="padding: 0 1.5rem;">
+          <label for="admin-login-password">Senha</label>
+          <div style="position: relative;">
+            <input type="password" id="admin-login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password" style="padding-right: 2.8rem;">
+            <button type="button" id="btn-toggle-password-visibility" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+              <i data-lucide="eye" id="icon-eye" style="width: 18px; height: 18px;"></i>
+              <i data-lucide="eye-off" id="icon-eye-off" style="width: 18px; height: 18px; display: none;"></i>
+            </button>
+          </div>
+          <p id="admin-login-error" style="color: var(--danger); font-size: 0.8rem; margin-top: 0.4rem; min-height: 1rem;"></p>
+        </div>
+        <div style="padding: 0 1.5rem 1.5rem;">
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 0.25rem;">
+            <i data-lucide="log-in"></i>
+            <span>Entrar no Painel</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE ALTERAÇÃO DE SENHA -->
+  <div class="modal-overlay" id="change-password-modal">
+    <div class="modal-container" style="max-width: 420px;">
+      <button class="btn-icon-only modal-close-btn" id="btn-close-change-pass-modal" aria-label="Fechar">
+        <i data-lucide="x"></i>
+      </button>
+      <div style="text-align: center; margin-bottom: 1.5rem; padding-top: 1.5rem;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-blue-glow); margin-bottom: 0.75rem;">
+          <i data-lucide="key-round" style="width: 28px; height: 28px; color: var(--accent-blue);"></i>
+        </div>
+        <h2 style="font-size: 1.2rem; margin-bottom: 0.3rem;">Alterar Senha</h2>
+        <p style="color: var(--text-muted); font-size: 0.82rem;">A nova senha será salva no navegador.</p>
+      </div>
+      <form id="change-password-form" style="padding: 0 1.5rem 1.5rem;">
+        <div class="form-group">
+          <label for="current-password">Senha Atual</label>
+          <input type="password" id="current-password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label for="new-password">Nova Senha</label>
+          <input type="password" id="new-password" class="form-control" placeholder="Mínimo 4 caracteres" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label for="confirm-password">Confirmar Nova Senha</label>
+          <input type="password" id="confirm-password" class="form-control" placeholder="Repita a nova senha" required minlength="4">
+        </div>
+        <p id="change-pass-error" style="color: var(--danger); font-size: 0.8rem; margin-top: -0.25rem; margin-bottom: 0.75rem; min-height: 1rem;"></p>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <i data-lucide="save"></i>
+          <span>Salvar Nova Senha</span>
+        </button>
       </form>
     </div>
   </div>
