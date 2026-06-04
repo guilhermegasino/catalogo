@@ -3,9 +3,8 @@ const SUPABASE_ANON_KEY = 'sb_publishable_Pd49AZcrhdpTkNiHkNBA2g_x5Ncj1Pp';
 const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const CatalogDB = {
-  // Adicionamos esta função vazia para resolver o erro do app.js
-  async init() { 
-    return Promise.resolve(); 
+  async init() {
+    return Promise.resolve();
   },
 
   async getAll() {
@@ -17,6 +16,12 @@ const CatalogDB = {
   async save(product) {
     const { data, error } = await sbClient.from('products').upsert(product).select();
     if (error) { console.error("Erro ao salvar:", error); throw error; }
+    return data;
+  },
+
+  async update(product) {
+    const { data, error } = await sbClient.from('products').upsert(product).select();
+    if (error) { console.error("Erro ao atualizar:", error); throw error; }
     return data;
   },
 
