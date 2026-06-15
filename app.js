@@ -11,6 +11,7 @@ const BRANDS_KEY         = "gs2_brands";
 const CATEGORIES_KEY     = "gs2_categories";
 
 let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategory = "";
+let cart = [];
 let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
 let adminSortCol = null, adminSortDir = "asc", uploadedImageFile = null, currentPreviewUrl = null;
 let editingProductId = null;
@@ -64,10 +65,23 @@ function renderCategoryChips() {
     const chip = document.createElement("div");
     chip.className = "brand-chip" + (selectedCategory === cat ? " selected" : "");
     chip.innerHTML = `<span>${cat}</span><button type="button" class="brand-delete-btn" style="background:none;border:none;cursor:pointer;padding:0 0 0 2px;color:inherit;opacity:0.65;font-size:1rem;line-height:1;">×</button>`;
-    chip.querySelector("span").onclick = () => { selectedCategory = (selectedCategory === cat) ? "" : cat; sel.value = selectedCategory; renderCategoryChips(); };
-    chip.querySelector("button").onclick = (e) => { e.stopPropagation(); saveCategoryList(getCategoryList().filter(c => c !== cat)); renderCategoryChips(); };
+    chip.querySelector("span").onclick = () => { selectedCategory = (selectedCategory === cat) ? "" : cat; sel.value = selectedCategory; renderCategoryChips(); updateGenderVisibility(); };
+    chip.querySelector("button").onclick = (e) => { e.stopPropagation(); saveCategoryList(getCategoryList().filter(c => c !== cat)); renderCategoryChips(); updateGenderVisibility(); };
     container.appendChild(chip);
   });
+}
+
+function updateGenderVisibility() {
+  const genderGroup = document.getElementById("form-group-gender");
+  if (!genderGroup) return;
+  if (!selectedCategory || selectedCategory.toLowerCase().includes("perfume")) {
+    genderGroup.style.display = "block";
+  } else {
+    genderGroup.style.display = "none";
+    document.getElementById("product-gender").value = "";
+    document.getElementById("btn-gender-masc").classList.remove("active");
+    document.getElementById("btn-gender-fem").classList.remove("active");
+  }
 }
 
 function renderCategoryTabs() {
@@ -77,7 +91,7 @@ function renderCategoryTabs() {
   tabs.innerHTML = "";
   uniqueCats.forEach(cat => {
     const btn = document.createElement("button");
-    btn.className = `category-tab ${currentCategory === cat ? "active" : ""}`;
+    btn.className = `filter-pill ${currentCategory === cat ? "active" : ""}`;
     btn.textContent = cat === "all" ? "Todos" : cat;
     btn.onclick = () => { currentCategory = cat; applyFiltersAndRender(); };
     tabs.appendChild(btn);
@@ -87,6 +101,10 @@ function renderCategoryTabs() {
 function renderGenderTabs() {
   const tabs = document.getElementById("gender-tabs");
   if (!tabs) return;
+  // Apenas mostrar genêro se existirem produtos com gênero
+  const hasGendered = allProducts.some(p => p.gender);
+  tabs.style.display = hasGendered ? "" : "none";
+  if (!hasGendered) return;
   const genders = [
     { id: "all", label: "Todos" },
     { id: "Masculino", label: "Masculino" },
@@ -95,7 +113,7 @@ function renderGenderTabs() {
   tabs.innerHTML = "";
   genders.forEach(gen => {
     const btn = document.createElement("button");
-    btn.className = `gender-tab ${currentGender === gen.id ? "active" : ""}`;
+    btn.className = `filter-chip ${currentGender === gen.id ? "active" : ""}`;
     btn.textContent = gen.label;
     btn.onclick = () => { currentGender = gen.id; applyFiltersAndRender(); };
     tabs.appendChild(btn);
@@ -104,21 +122,21 @@ function renderGenderTabs() {
 
 function renderBrandFilterTabs() {
   const tabs = document.getElementById("brand-filter-tabs");
-  const row = document.getElementById("brand-filter-row");
-  if (!tabs || !row) return;
+  if (!tabs) return;
   const uniqueBrands = [...new Set(allProducts.map(p => p.brand?.trim()).filter(Boolean))].sort();
-  if (uniqueBrands.length === 0) { row.style.display = "none"; return; }
-  row.style.display = "";
+  if (uniqueBrands.length === 0) { tabs.style.display = "none"; return; }
+  tabs.style.display = "";
   uniqueBrands.unshift("all");
   tabs.innerHTML = "";
   uniqueBrands.forEach(brand => {
     const btn = document.createElement("button");
-    btn.className = `category-tab brand-filter-tab ${currentBrand === brand ? "active" : ""}`;
-    btn.textContent = brand === "all" ? "Todos" : brand;
+    btn.className = `filter-chip ${currentBrand === brand ? "active" : ""}`;
+    btn.textContent = brand === "all" ? "Todas" : brand;
     btn.onclick = () => { currentBrand = brand; applyFiltersAndRender(); };
     tabs.appendChild(btn);
   });
 }
+
 
 // ==========================================
 // RENDERIZAÇÃO E FILTRAGEM
@@ -146,23 +164,14 @@ function applyFiltersAndRender() {
   else if (currentSort === "name-desc") filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
 
   const isWholesale = isWholesaleAuthenticated();
-  const wholesaleToggle = document.getElementById("wholesale-view-toggle");
   const productGrid = document.getElementById("product-grid");
   const productListView = document.getElementById("product-list-view");
 
-  if (isWholesale) {
-    if (wholesaleToggle) wholesaleToggle.style.display = "flex";
-    if (currentCatalogLayout === "list") {
-      if (productGrid) productGrid.style.display = "none";
-      if (productListView) productListView.style.display = "block";
-      renderCatalogList();
-    } else {
-      if (productGrid) productGrid.style.display = "grid";
-      if (productListView) productListView.style.display = "none";
-      renderCatalogGrid();
-    }
+  if (currentCatalogLayout === "list") {
+    if (productGrid) productGrid.style.display = "none";
+    if (productListView) productListView.style.display = "block";
+    renderCatalogList();
   } else {
-    if (wholesaleToggle) wholesaleToggle.style.display = "none";
     if (productGrid) productGrid.style.display = "grid";
     if (productListView) productListView.style.display = "none";
     renderCatalogGrid();
@@ -180,7 +189,9 @@ function formatBRL(val) {
 
 function renderCatalogGrid() {
   const grid = document.getElementById("product-grid");
-  grid.innerHTML = filteredProducts.length === 0 ? '<div class="empty-state"><i data-lucide="package-open" style="width:48px;height:48px;"></i><p>Nenhum produto encontrado.</p></div>' : "";
+  grid.innerHTML = filteredProducts.length === 0
+    ? '<div class="empty-state"><i data-lucide="package-open" style="width:48px;height:48px;"></i><p>Nenhum produto encontrado.</p></div>'
+    : "";
 
   const isWholesale = isWholesaleAuthenticated();
   const announcementBar = document.querySelector(".announcement-bar");
@@ -189,50 +200,29 @@ function renderCatalogGrid() {
       announcementBar.innerHTML = "✨ ÁREA DE ATACADO ATIVA — PREÇOS EXCLUSIVOS PARA REVENDA";
       announcementBar.style.background = "linear-gradient(90deg, #18ab50, #25d366, #18ab50)";
     } else {
-      announcementBar.innerHTML = "✨ GS2 IMPORTS — PERFUMES IMPORTADOS E FRAGRÂNCIAS ÁRABES PREMIUM";
+      announcementBar.innerHTML = "✨ GS2 IMPORTS — PERFUMES IMPORTADOS E ELETRÔNICOS PREMIUM";
       announcementBar.style.background = "linear-gradient(90deg, #cc2900, var(--accent-red), #cc2900)";
     }
   }
 
   filteredProducts.forEach(product => {
+    const price = isWholesale ? product.priceWholesale : product.priceSuggested;
     const card = document.createElement("div");
-    card.className = "product-card" + (product.unavailable ? " product-unavailable" : "");
+    card.className = "pcard" + (product.unavailable ? " pcard--unavailable" : "");
     card.onclick = () => openProductDetails(product.id);
-
-    let priceHtml = "";
-    if (isWholesale) {
-      priceHtml = `
-        <div>
-          <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);opacity:0.7;">Preço Atacado</div>
-          <div style="font-size:1.15rem;font-weight:800;color:var(--text-main);">${formatBRL(product.priceWholesale)}</div>
-        </div>
-      `;
-    } else {
-      priceHtml = `
-        <div>
-          <div style="font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);opacity:0.7;">Valor</div>
-          <div style="font-size:1.15rem;font-weight:800;color:var(--accent-blue);">${formatBRL(product.priceSuggested)}</div>
-        </div>
-      `;
-    }
-
     card.innerHTML = `
-      <div class="product-card-image-wrapper">
-        <img class="product-card-image" src="${product.image}" alt="${product.name}">
-        ${product.unavailable ? '<span class="unavailable-badge">Indisponível</span>' : ''}
-        <span class="product-category-tag">${product.category || ''}</span>
-        ${product.gender ? `<span class="product-gender-tag product-gender-tag--${product.gender === 'Masculino' ? 'masc' : 'fem'}">${product.gender === 'Masculino' ? '♂' : '♀'}</span>` : ''}
-        ${product.brand ? `<span class="product-brand-tag">${product.brand}</span>` : ''}
+      <div class="pcard-image-area">
+        <img src="${product.image}" alt="${product.name}" class="pcard-image">
+        ${product.unavailable ? '<div class="pcard-unavail">Esgotado</div>' : ""}
+        ${product.gender ? `<span class="pcard-gender-badge pcard-gender-badge--${product.gender === 'Masculino' ? 'masc' : 'fem'}">${product.gender === 'Masculino' ? '♂' : '♀'}</span>` : ""}
       </div>
-      <div class="product-card-content">
-        <h3 class="product-card-title">${product.name}</h3>
-        ${product.description ? `<p class="product-card-desc">${product.description}</p>` : ''}
-        <div class="product-card-footer">
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            ${priceHtml}
-          </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:0.5rem;" onclick="event.stopPropagation(); openProductDetails('${product.id}')">
-            <i data-lucide="eye" style="width:15px;height:15px;"></i> Detalhes
+      <div class="pcard-body">
+        <p class="pcard-name">${product.name}</p>
+        <p class="pcard-sub">${[product.category, product.brand].filter(Boolean).join(' · ')}</p>
+        <div class="pcard-footer">
+          <span class="pcard-price">${formatBRL(price)}</span>
+          <button class="pcard-cart-btn" onclick="event.stopPropagation(); addToCart('${product.id}', 1)" title="Adicionar ao pedido">
+            <i data-lucide="shopping-bag" style="width:16px;height:16px;"></i>
           </button>
         </div>
       </div>
@@ -247,38 +237,58 @@ function renderCatalogList() {
   if (!list) return;
   list.innerHTML = "";
 
+  const isWholesale = isWholesaleAuthenticated();
+
+  if (filteredProducts.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i data-lucide="package-open" style="width:48px;height:48px;"></i><p>Nenhum produto encontrado.</p></div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  // Cabeçalho
+  const header = document.createElement("div");
+  header.className = "hcard-header";
+  header.innerHTML = `
+    <span></span>
+    <span>Produto</span>
+    <span>Categoria · Marca</span>
+    <span>${isWholesale ? "Atacado" : "Valor"}</span>
+    <span>Ação</span>
+  `;
+  list.appendChild(header);
+
   filteredProducts.forEach(product => {
-    const tr = document.createElement("tr");
-    tr.className = product.unavailable ? "product-unavailable" : "";
-    tr.style.cursor = "pointer";
-    tr.onclick = () => openProductDetails(product.id);
-    tr.innerHTML = `
-      <td><img class="admin-prod-thumb" src="${product.image}" alt="${product.name}"></td>
-      <td style="font-weight: 700;">
-        ${product.name}
-        ${product.unavailable ? ' <span style="font-size:0.65rem; padding:2px 6px; background:var(--danger); color:#fff; border-radius:4px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">Sem Estoque</span>' : ''}
-      </td>
-      <td>${product.category || '—'}</td>
-      <td>${product.brand || '—'}</td>
-      <td>
-        ${product.gender ? `<span class="product-gender-tag product-gender-tag--${product.gender === 'Masculino' ? 'masc' : 'fem'}" style="position:static; display:inline-block; padding: 2px 6px;">${product.gender}</span>` : '—'}
-      </td>
-      <td>${product.quantity || 0}</td>
-      <td style="font-weight: 800; color: var(--text-main); font-size: 1rem;">
-        ${formatBRL(product.priceWholesale)}
-      </td>
-      <td>
-        <div class="admin-actions" onclick="event.stopPropagation();">
-          <button class="btn btn-primary" style="padding: 0.45rem 0.9rem; font-size: 0.72rem;" onclick="openProductDetails('${product.id}')">
-            <i data-lucide="eye" style="width:13px;height:13px;"></i> Detalhes
-          </button>
-        </div>
-      </td>
+    const price = isWholesale ? product.priceWholesale : product.priceSuggested;
+    const priceColor = isWholesale ? "#1d1d1f" : "#0066cc";
+    const subText = [product.category, product.brand].filter(Boolean).join(" · ");
+    const genderText = product.gender ? ` · ${product.gender}` : "";
+
+    const card = document.createElement("div");
+    card.className = "hcard" + (product.unavailable ? " hcard--unavailable" : "");
+    card.onclick = () => openProductDetails(product.id);
+    card.innerHTML = `
+      <div class="hcard-image-wrap">
+        <img src="${product.image}" alt="${product.name}" class="hcard-image">
+        ${product.unavailable ? '<div class="hcard-unavail-badge">Esgotado</div>' : ""}
+      </div>
+      <div class="hcard-body">
+        <div class="hcard-title">${product.name}</div>
+      </div>
+      <div class="hcard-meta">
+        <span class="hcard-tag">${subText || "—"}${genderText}</span>
+      </div>
+      <div class="hcard-price" style="color:${priceColor};">${formatBRL(price)}</div>
+      <div onclick="event.stopPropagation();">
+        <button class="hcard-btn" onclick="addToCart('${product.id}', 1)">
+          <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i> Adicionar
+        </button>
+      </div>
     `;
-    list.appendChild(tr);
+    list.appendChild(card);
   });
   lucide.createIcons();
 }
+
 
 function renderAdminProductsList() {
   const list = document.getElementById("admin-products-list");
@@ -348,10 +358,12 @@ function openProductDetails(id) {
     priceSuggestedEl.textContent = formatBRL(product.priceSuggested);
   }
 
-  const priceText = isWholesale ? formatBRL(product.priceWholesale) : formatBRL(product.priceSuggested);
-  const modeText = isWholesale ? "(Atacado)" : "(Varejo)";
-  const whatsappText = `Olá! Gostaria de fazer um pedido do produto: ${product.name} — ${priceText} ${modeText}`;
-  document.getElementById("btn-whatsapp-contact").href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappText)}`;
+  document.getElementById("detail-product-quantity").value = 1;
+  document.getElementById("btn-add-to-cart-detail").onclick = () => {
+    const qty = parseInt(document.getElementById("detail-product-quantity").value) || 1;
+    addToCart(product.id, qty);
+    document.getElementById("product-detail-modal").classList.remove("active");
+  };
 
   document.getElementById("product-detail-modal").classList.add("active");
 }
@@ -404,6 +416,7 @@ function openProductForm(productId) {
 
   renderBrandButtons();
   renderCategoryChips();
+  updateGenderVisibility();
   document.getElementById("product-form-modal").classList.add("active");
 }
 
@@ -647,17 +660,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ── ADD PRODUCT ──
   document.getElementById("btn-add-product").addEventListener("click", () => { openProductForm(); });
 
-  // ── RESET DB ──
-  document.getElementById("btn-reset-db").addEventListener("click", async () => {
-    if (confirm("Restaurar catálogo padrão? Todos os dados atuais serão substituídos.")) {
-      for (const product of INITIAL_PRODUCTS) {
-        await CatalogDB.save(product);
-      }
-      showToast("Catálogo restaurado!");
-      await loadProductsData();
-      renderAdminProductsList();
-    }
-  });
 
   // ── CHANGE PASSWORD ──
   document.getElementById("btn-change-password").addEventListener("click", () => {
@@ -827,30 +829,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyFiltersAndRender();
   });
 
-  // ── CONTROLE DE VISUALIZAÇÃO ATACADO (GRADE / LISTA) ──
+  // ── CONTROLE DE VISUALIZAÇÃO (GRADE / LISTA) ──
   const btnViewGrid = document.getElementById("btn-view-grid");
   const btnViewList = document.getElementById("btn-view-list");
 
   if (btnViewGrid && btnViewList) {
     btnViewGrid.addEventListener("click", () => {
       currentCatalogLayout = "grid";
-      btnViewGrid.style.background = "var(--accent-blue)";
-      btnViewGrid.style.color = "#ffffff";
-      btnViewGrid.style.borderColor = "var(--accent-blue)";
-      btnViewList.style.background = "var(--base-bg)";
-      btnViewList.style.color = "var(--text-muted)";
-      btnViewList.style.borderColor = "var(--card-border)";
+      btnViewGrid.classList.add("active");
+      btnViewList.classList.remove("active");
       applyFiltersAndRender();
     });
 
     btnViewList.addEventListener("click", () => {
       currentCatalogLayout = "list";
-      btnViewList.style.background = "var(--accent-blue)";
-      btnViewList.style.color = "#ffffff";
-      btnViewList.style.borderColor = "var(--accent-blue)";
-      btnViewGrid.style.background = "var(--base-bg)";
-      btnViewGrid.style.color = "var(--text-muted)";
-      btnViewGrid.style.borderColor = "var(--card-border)";
+      btnViewList.classList.add("active");
+      btnViewGrid.classList.remove("active");
       applyFiltersAndRender();
     });
   }
@@ -869,8 +863,143 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  // ── CART EVENTS ──
+  document.getElementById("btn-detail-qty-minus").addEventListener("click", () => {
+    const input = document.getElementById("detail-product-quantity");
+    let v = parseInt(input.value) || 1;
+    if (v > 1) input.value = v - 1;
+  });
+  document.getElementById("btn-detail-qty-plus").addEventListener("click", () => {
+    const input = document.getElementById("detail-product-quantity");
+    let v = parseInt(input.value) || 1;
+    input.value = v + 1;
+  });
+
+  document.getElementById("floating-cart-btn").addEventListener("click", () => {
+    document.getElementById("cart-modal").classList.add("active");
+  });
+
+  document.getElementById("btn-send-whatsapp-order").addEventListener("click", () => {
+    sendCartToWhatsApp();
+  });
+
   // ── INITIAL ICONS ──
   lucide.createIcons();
 
   console.log("Sistema GS2 Imports inicializado com sucesso.");
 });
+
+// ==========================================
+// FUNÇÕES DO CARRINHO DE COMPRAS
+// ==========================================
+function addToCart(productId, qty = 1) {
+  const product = allProducts.find(p => String(p.id) === String(productId));
+  if (!product) return;
+
+  const existing = cart.find(item => String(item.product.id) === String(productId));
+  if (existing) {
+    existing.quantity += qty;
+  } else {
+    cart.push({ product, quantity: qty });
+  }
+
+  showToast(qty > 1 ? `${qty} unidades adicionadas ao pedido!` : "Produto adicionado ao pedido!");
+  updateCartUI();
+}
+
+function removeFromCart(productId) {
+  cart = cart.filter(item => String(item.product.id) !== String(productId));
+  updateCartUI();
+}
+
+function updateCartQuantity(productId, delta) {
+  const item = cart.find(i => String(i.product.id) === String(productId));
+  if (item) {
+    item.quantity += delta;
+    if (item.quantity <= 0) removeFromCart(productId);
+    else updateCartUI();
+  }
+}
+
+function updateCartUI() {
+  const isWholesale = isWholesaleAuthenticated();
+  const badge = document.getElementById("floating-cart-badge");
+  const btn = document.getElementById("floating-cart-btn");
+  const container = document.getElementById("cart-items-container");
+  const totalValueEl = document.getElementById("cart-total-value");
+
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  badge.textContent = totalItems;
+  
+  if (totalItems > 0) {
+    btn.style.display = "flex";
+  } else {
+    btn.style.display = "none";
+    document.getElementById("cart-modal").classList.remove("active");
+  }
+
+  container.innerHTML = "";
+  if (cart.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 2rem 0;">
+        <i data-lucide="shopping-cart" style="width:48px;height:48px; opacity: 0.5;"></i>
+        <p>Seu carrinho está vazio.</p>
+      </div>`;
+    totalValueEl.textContent = "R$ 0,00";
+    lucide.createIcons();
+    return;
+  }
+
+  let totalValue = 0;
+  cart.forEach(item => {
+    const price = isWholesale ? item.product.priceWholesale : item.product.priceSuggested;
+    totalValue += price * item.quantity;
+
+    const div = document.createElement("div");
+    div.className = "cart-item";
+    div.innerHTML = `
+      <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-image">
+      <div class="cart-item-details">
+        <div class="cart-item-title">${item.product.name}</div>
+        <div class="cart-item-price">${formatBRL(price)} ${isWholesale ? '<span style="font-size:0.6rem;color:var(--text-muted);">(Atacado)</span>' : ''}</div>
+      </div>
+      <div class="cart-item-actions">
+        <div class="cart-qty-control">
+          <button class="cart-qty-btn" onclick="updateCartQuantity('${item.product.id}', -1)"><i data-lucide="minus" style="width:12px;height:12px;"></i></button>
+          <input type="text" class="cart-qty-input" value="${item.quantity}" readonly>
+          <button class="cart-qty-btn" onclick="updateCartQuantity('${item.product.id}', 1)"><i data-lucide="plus" style="width:12px;height:12px;"></i></button>
+        </div>
+        <button class="btn-remove-item" onclick="removeFromCart('${item.product.id}')"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> Remover</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  totalValueEl.textContent = formatBRL(totalValue);
+  lucide.createIcons();
+}
+
+function sendCartToWhatsApp() {
+  if (cart.length === 0) return;
+  const isWholesale = isWholesaleAuthenticated();
+  const modeText = isWholesale ? "(Atacado)" : "(Varejo)";
+  
+  let text = `Olá! Gostaria de fazer o seguinte pedido ${modeText}:\n\n`;
+  let totalValue = 0;
+
+  cart.forEach(item => {
+    const price = isWholesale ? item.product.priceWholesale : item.product.priceSuggested;
+    totalValue += price * item.quantity;
+    text += `- ${item.quantity}x ${item.product.name} (R$ ${price.toFixed(2)} cada)\n`;
+  });
+
+  text += `\n*Total do Pedido:* ${formatBRL(totalValue)}`;
+  
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+  
+  // Esvazia carrinho após pedido
+  cart = [];
+  updateCartUI();
+  document.getElementById("cart-modal").classList.remove("active");
+  showToast("Pedido enviado para o WhatsApp!");
+}
