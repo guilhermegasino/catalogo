@@ -14,6 +14,7 @@ let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategor
 let cart = [];
 let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
 let adminSortCol = null, adminSortDir = "asc", uploadedImageFile = null, currentPreviewUrl = null;
+let catalogSortCol = null, catalogSortDir = "asc";
 let editingProductId = null;
 const objectUrlCache = new Map();
 
@@ -158,10 +159,23 @@ function applyFiltersAndRender() {
     (currentSearch === "" || p.name.toLowerCase().includes(currentSearch.toLowerCase()))
   );
 
-  if (currentSort === "price-asc") filteredProducts.sort((a, b) => a.priceWholesale - b.priceWholesale);
-  else if (currentSort === "price-desc") filteredProducts.sort((a, b) => b.priceWholesale - a.priceWholesale);
-  else if (currentSort === "name-asc") filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-  else if (currentSort === "name-desc") filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
+  if (catalogSortCol) {
+    filteredProducts.sort((a, b) => {
+      let va = a[catalogSortCol];
+      let vb = b[catalogSortCol];
+      if (va === undefined || va === null) va = "";
+      if (vb === undefined || vb === null) vb = "";
+      if (typeof va === "string") { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if (va < vb) return catalogSortDir === "asc" ? -1 : 1;
+      if (va > vb) return catalogSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  } else {
+    if (currentSort === "price-asc") filteredProducts.sort((a, b) => a.priceWholesale - b.priceWholesale);
+    else if (currentSort === "price-desc") filteredProducts.sort((a, b) => b.priceWholesale - a.priceWholesale);
+    else if (currentSort === "name-asc") filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
+    else if (currentSort === "name-desc") filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
+  }
 
   const isWholesale = isWholesaleAuthenticated();
   const productGrid = document.getElementById("product-grid");
@@ -198,10 +212,12 @@ function renderCatalogGrid() {
   if (announcementBar) {
     if (isWholesale) {
       announcementBar.innerHTML = "✨ ÁREA DE ATACADO ATIVA — PREÇOS EXCLUSIVOS PARA REVENDA";
-      announcementBar.style.background = "linear-gradient(90deg, #18ab50, #25d366, #18ab50)";
+      announcementBar.style.background = "linear-gradient(90deg, #800020, #5c021a, #800020)";
+      announcementBar.style.color = "#ffffff";
     } else {
       announcementBar.innerHTML = "✨ GS2 IMPORTS — PERFUMES IMPORTADOS E ELETRÔNICOS PREMIUM";
-      announcementBar.style.background = "linear-gradient(90deg, #cc2900, var(--accent-red), #cc2900)";
+      announcementBar.style.background = "#0d0d0f";
+      announcementBar.style.color = "#e5c158";
     }
   }
 
@@ -245,50 +261,144 @@ function renderCatalogList() {
     return;
   }
 
-  // Cabeçalho
-  const header = document.createElement("div");
-  header.className = "hcard-header";
-  header.innerHTML = `
-    <span></span>
-    <span>Produto</span>
-    <span>Categoria · Marca</span>
-    <span>${isWholesale ? "Atacado" : "Valor"}</span>
-    <span>Ação</span>
-  `;
-  list.appendChild(header);
-
-  filteredProducts.forEach(product => {
-    const price = isWholesale ? product.priceWholesale : product.priceSuggested;
-    const priceColor = isWholesale ? "#1d1d1f" : "#0066cc";
-    const subText = [product.category, product.brand].filter(Boolean).join(" · ");
-    const genderText = product.gender ? ` · ${product.gender}` : "";
-
-    const card = document.createElement("div");
-    card.className = "hcard" + (product.unavailable ? " hcard--unavailable" : "");
-    card.onclick = () => openProductDetails(product.id);
-    card.innerHTML = `
-      <div class="hcard-image-wrap">
-        <img src="${product.image}" alt="${product.name}" class="hcard-image">
-        ${product.unavailable ? '<div class="hcard-unavail-badge">Esgotado</div>' : ""}
-      </div>
-      <div class="hcard-body">
-        <div class="hcard-title">${product.name}</div>
-      </div>
-      <div class="hcard-meta">
-        <span class="hcard-tag">${subText || "—"}${genderText}</span>
-      </div>
-      <div class="hcard-price" style="color:${priceColor};">${formatBRL(price)}</div>
-      <div onclick="event.stopPropagation();">
-        <button class="hcard-btn" onclick="addToCart('${product.id}', 1)">
-          <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i> Adicionar
-        </button>
-      </div>
+  if (isWholesale) {
+    // ── MODO ATACADO: Tabela detalhada estilo admin ──
+    const tableWrap = document.createElement("div");
+    tableWrap.className = "admin-table-container";
+    const table = document.createElement("table");
+    table.className = "admin-table wholesale-catalog-table";
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Foto</th>
+          <th class="catalog-th-sort" data-sort="name" style="cursor:pointer; user-select:none;">Nome <span class="sort-icon">${catalogSortCol === 'name' ? (catalogSortDir === 'asc' ? '▲' : '▼') : '↕'}</span></th>
+          <th class="catalog-th-sort" data-sort="category" style="cursor:pointer; user-select:none;">Categoria <span class="sort-icon">${catalogSortCol === 'category' ? (catalogSortDir === 'asc' ? '▲' : '▼') : '↕'}</span></th>
+          <th class="catalog-th-sort" data-sort="priceWholesale" style="cursor:pointer; user-select:none;">Valor Atacado <span class="sort-icon">${catalogSortCol === 'priceWholesale' ? (catalogSortDir === 'asc' ? '▲' : '▼') : '↕'}</span></th>
+          <th class="catalog-th-sort" data-sort="quantity" style="cursor:pointer; user-select:none;">Qtd. <span class="sort-icon">${catalogSortCol === 'quantity' ? (catalogSortDir === 'asc' ? '▲' : '▼') : '↕'}</span></th>
+          <th>Ação</th>
+        </tr>
+      </thead>
     `;
-    list.appendChild(card);
-  });
+    const tbody = document.createElement("tbody");
+
+    filteredProducts.forEach(product => {
+      const tr = document.createElement("tr");
+      tr.style.cursor = "pointer";
+      tr.onclick = () => openProductDetails(product.id);
+      if (product.unavailable) tr.classList.add("wholesale-row-unavailable");
+      tr.innerHTML = `
+        <td><img class="admin-prod-thumb" src="${product.image}" alt="${product.name}"></td>
+        <td style="font-weight:600;">${product.name}${product.unavailable ? ' <span class="wholesale-unavail-tag">Esgotado</span>' : ''}</td>
+        <td>${product.category || '—'}</td>
+        <td style="font-weight:700;">${formatBRL(product.priceWholesale)}</td>
+        <td>${product.quantity || 0}</td>
+        <td>
+          <button class="hcard-btn" onclick="event.stopPropagation(); addToCart('${product.id}', 1)" ${product.unavailable ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>
+            <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i> Adicionar
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    list.appendChild(tableWrap);
+
+    // Adiciona evento de clique para ordenação
+    table.querySelectorAll(".catalog-th-sort").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.sort;
+        if (catalogSortCol === col) {
+          catalogSortDir = catalogSortDir === "asc" ? "desc" : "asc";
+        } else {
+          catalogSortCol = col;
+          catalogSortDir = "asc";
+        }
+        
+        // Reseta o select do filtro para "default"
+        const sortSelect = document.getElementById("sort-select");
+        if (sortSelect) sortSelect.value = "default";
+        currentSort = "default";
+
+        applyFiltersAndRender();
+      });
+    });
+  } else {
+    // ── MODO PADRÃO: Cards horizontais ──
+    const header = document.createElement("div");
+    header.className = "hcard-header";
+    header.innerHTML = `
+      <span></span>
+      <span>Produto</span>
+      <span>Categoria · Marca</span>
+      <span>Valor</span>
+      <span>Ação</span>
+    `;
+    list.appendChild(header);
+
+    filteredProducts.forEach(product => {
+      const price = product.priceSuggested;
+      const subText = [product.category, product.brand].filter(Boolean).join(" · ");
+      const genderText = product.gender ? ` · ${product.gender}` : "";
+
+      const card = document.createElement("div");
+      card.className = "hcard" + (product.unavailable ? " hcard--unavailable" : "");
+      card.onclick = () => openProductDetails(product.id);
+      card.innerHTML = `
+        <div class="hcard-image-wrap">
+          <img src="${product.image}" alt="${product.name}" class="hcard-image">
+          ${product.unavailable ? '<div class="hcard-unavail-badge">Esgotado</div>' : ""}
+        </div>
+        <div class="hcard-body">
+          <div class="hcard-title">${product.name}</div>
+        </div>
+        <div class="hcard-meta">
+          <span class="hcard-tag">${subText || "—"}${genderText}</span>
+        </div>
+        <div class="hcard-price" style="color:#0066cc;">${formatBRL(price)}</div>
+        <div>
+          <button class="hcard-btn" onclick="event.stopPropagation(); addToCart('${product.id}', 1)">
+            <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i> Adicionar
+          </button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  }
   lucide.createIcons();
 }
 
+
+// ==========================================
+// CÁLCULO DE LUCRO (FORMULÁRIO)
+// ==========================================
+function updateProfitDisplay() {
+  const purchasePrice = parseFloat(document.getElementById("product-price-last-purchase").value) || 0;
+  const suggestedPrice = parseFloat(document.getElementById("product-price-suggested").value) || 0;
+  const profit = suggestedPrice - purchasePrice;
+  const profitPercent = purchasePrice > 0 ? ((profit / purchasePrice) * 100).toFixed(0) : 0;
+
+  const valueEl = document.getElementById("profit-value-display");
+  const percentEl = document.getElementById("profit-percent-display");
+  const boxEl = document.getElementById("profit-display-box");
+
+  if (!valueEl || !percentEl || !boxEl) return;
+
+  valueEl.textContent = formatBRL(profit);
+  percentEl.textContent = purchasePrice > 0 ? `${profitPercent}%` : '—';
+
+  boxEl.classList.remove("profit-positive", "profit-negative", "profit-zero");
+  if (purchasePrice <= 0 || suggestedPrice <= 0) {
+    boxEl.classList.add("profit-zero");
+  } else if (profit > 0) {
+    boxEl.classList.add("profit-positive");
+  } else if (profit < 0) {
+    boxEl.classList.add("profit-negative");
+  } else {
+    boxEl.classList.add("profit-zero");
+  }
+}
 
 function renderAdminProductsList() {
   const list = document.getElementById("admin-products-list");
@@ -298,7 +408,13 @@ function renderAdminProductsList() {
   let sorted = [...allProducts];
   if (adminSortCol) {
     sorted.sort((a, b) => {
-      let va = a[adminSortCol], vb = b[adminSortCol];
+      let va, vb;
+      if (adminSortCol === "profit") {
+        va = (a.priceSuggested || 0) - (a.priceLastPurchase || 0);
+        vb = (b.priceSuggested || 0) - (b.priceLastPurchase || 0);
+      } else {
+        va = a[adminSortCol]; vb = b[adminSortCol];
+      }
       if (typeof va === "string") { va = va.toLowerCase(); vb = vb.toLowerCase(); }
       if (va < vb) return adminSortDir === "asc" ? -1 : 1;
       if (va > vb) return adminSortDir === "asc" ? 1 : -1;
@@ -307,14 +423,22 @@ function renderAdminProductsList() {
   }
 
   sorted.forEach(product => {
+    const profit = (product.priceSuggested || 0) - (product.priceLastPurchase || 0);
+    const profitPercent = product.priceLastPurchase > 0 ? ((profit / product.priceLastPurchase) * 100).toFixed(0) : null;
+    const hasPurchase = product.priceLastPurchase > 0;
+    const profitClass = hasPurchase ? (profit > 0 ? 'profit-positive' : profit < 0 ? 'profit-negative' : '') : '';
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><img class="admin-prod-thumb" src="${product.image}" alt="${product.name}"></td>
       <td>${product.name}</td>
       <td>${product.category || ''}</td>
-      <td>${product.priceLastPurchase ? formatBRL(product.priceLastPurchase) : '—'}</td>
+      <td>${hasPurchase ? formatBRL(product.priceLastPurchase) : '—'}</td>
       <td>${formatBRL(product.priceWholesale)}</td>
       <td>${formatBRL(product.priceSuggested)}</td>
+      <td class="admin-profit-cell ${profitClass}">
+        ${hasPurchase ? `<span class="admin-profit-value">${formatBRL(profit)}</span><span class="admin-profit-percent">${profitPercent}%</span>` : '—'}
+      </td>
       <td>${product.quantity || 0}</td>
       <td>
         <div class="admin-actions">
@@ -417,6 +541,7 @@ function openProductForm(productId) {
   renderBrandButtons();
   renderCategoryChips();
   updateGenderVisibility();
+  updateProfitDisplay();
   document.getElementById("product-form-modal").classList.add("active");
 }
 
@@ -541,12 +666,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateWholesaleButtonState() {
     if (isWholesaleAuthenticated()) {
       wholesaleBtn.innerHTML = '<i data-lucide="percent"></i><span>Sair Atacado</span>';
-      wholesaleBtn.style.background = 'linear-gradient(135deg, var(--accent-red), var(--accent-red-hover))';
-      wholesaleBtn.style.boxShadow = '0 2px 8px var(--accent-red-glow)';
+      wholesaleBtn.style.background = 'linear-gradient(135deg, #800020, #5c021a)';
+      wholesaleBtn.style.color = '#ffffff';
+      wholesaleBtn.style.boxShadow = '0 2px 8px rgba(128,0,32,0.3)';
     } else {
       wholesaleBtn.innerHTML = '<i data-lucide="percent"></i><span>Área Atacado</span>';
-      wholesaleBtn.style.background = 'linear-gradient(135deg, #1fbe5a, #25d366)';
-      wholesaleBtn.style.boxShadow = '0 2px 8px rgba(37,211,102,0.25)';
+      wholesaleBtn.style.background = 'linear-gradient(135deg, #c5a059, #e5c158)';
+      wholesaleBtn.style.color = '#000000';
+      wholesaleBtn.style.boxShadow = '0 2px 8px rgba(229,193,88,0.25)';
     }
     lucide.createIcons();
   }
@@ -559,6 +686,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         wholesaleLoginModal.classList.add("active");
       } else {
         logoutWholesale();
+        currentCatalogLayout = "grid";
+        document.getElementById("btn-view-grid").classList.add("active");
+        document.getElementById("btn-view-list").classList.remove("active");
         updateWholesaleButtonState();
         applyFiltersAndRender();
         showToast("Sessão atacado encerrada.");
@@ -578,6 +708,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         wholesaleLoginModal.classList.remove("active");
         document.getElementById("wholesale-login-password").value = "";
         errorMsg.textContent = "";
+        currentCatalogLayout = "list";
+        document.getElementById("btn-view-list").classList.add("active");
+        document.getElementById("btn-view-grid").classList.remove("active");
         updateWholesaleButtonState();
         applyFiltersAndRender();
         showToast("Acesso ao Atacado liberado!");
@@ -787,6 +920,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (val > 0) {
       document.getElementById("product-price-wholesale").value = (val * 1.10).toFixed(2);
     }
+    updateProfitDisplay();
+  });
+
+  document.getElementById("product-price-suggested").addEventListener("input", () => {
+    updateProfitDisplay();
   });
 
   // ── GOOGLE SHOPPING SEARCH ──
@@ -826,6 +964,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ── SORT ──
   document.getElementById("sort-select").addEventListener("change", (e) => {
     currentSort = e.target.value;
+    catalogSortCol = null; // Reseta ordenação da tabela quando muda o select
     applyFiltersAndRender();
   });
 
