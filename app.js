@@ -15,6 +15,7 @@ let cart = [];
 let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
 let adminSortCol = null, adminSortDir = "asc", uploadedImageFile = null, currentPreviewUrl = null;
 let catalogSortCol = null, catalogSortDir = "asc";
+let adminAvailabilityFilter = "all", adminSearchQuery = "";
 let editingProductId = null;
 const objectUrlCache = new Map();
 
@@ -194,8 +195,16 @@ function applyFiltersAndRender() {
   renderCategoryTabs();
   renderGenderTabs();
   renderBrandFilterTabs();
+
+  // Mostrar/ocultar botão "Gerar Tabela Atacado" com base na autenticação
+  const btnWholesaleShare = document.getElementById("btn-wholesale-share-list");
+  if (btnWholesaleShare) {
+    btnWholesaleShare.style.display = isWholesale ? "inline-flex" : "none";
+  }
+
   if (document.getElementById("admin-view").style.display !== "none") renderAdminProductsList();
 }
+
 
 function formatBRL(val) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
@@ -405,9 +414,26 @@ function renderAdminProductsList() {
   if (!list) return;
   list.innerHTML = "";
 
-  let sorted = [...allProducts];
+  let filtered = allProducts.filter(p => {
+    // Busca por termo no admin
+    if (adminSearchQuery) {
+      const q = adminSearchQuery.toLowerCase();
+      const matchName = (p.name || "").toLowerCase().includes(q);
+      const matchCat = (p.category || "").toLowerCase().includes(q);
+      const matchBrand = (p.brand || "").toLowerCase().includes(q);
+      if (!matchName && !matchCat && !matchBrand) return false;
+    }
+
+    // Filtro de Disponibilidade / Estoque
+    const isOutOfStock = p.unavailable || (parseInt(p.quantity) || 0) <= 0;
+    if (adminAvailabilityFilter === "available" && isOutOfStock) return false;
+    if (adminAvailabilityFilter === "unavailable" && !isOutOfStock) return false;
+
+    return true;
+  });
+
   if (adminSortCol) {
-    sorted.sort((a, b) => {
+    filtered.sort((a, b) => {
       let va, vb;
       if (adminSortCol === "profit") {
         va = (a.priceSuggested || 0) - (a.priceLastPurchase || 0);
@@ -422,24 +448,31 @@ function renderAdminProductsList() {
     });
   }
 
-  sorted.forEach(product => {
+  if (filtered.length === 0) {
+    list.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); font-size:0.9rem;">Nenhum produto encontrado com os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(product => {
     const profit = (product.priceSuggested || 0) - (product.priceLastPurchase || 0);
     const profitPercent = product.priceLastPurchase > 0 ? ((profit / product.priceLastPurchase) * 100).toFixed(0) : null;
     const hasPurchase = product.priceLastPurchase > 0;
     const profitClass = hasPurchase ? (profit > 0 ? 'profit-positive' : profit < 0 ? 'profit-negative' : '') : '';
+    const isOutOfStock = product.unavailable || (parseInt(product.quantity) || 0) <= 0;
 
     const tr = document.createElement("tr");
+    if (isOutOfStock) tr.style.background = "rgba(239, 68, 68, 0.03)";
     tr.innerHTML = `
       <td><img class="admin-prod-thumb" src="${product.image}" alt="${product.name}"></td>
-      <td>${product.name}</td>
-      <td>${product.category || ''}</td>
+      <td style="font-weight:600;">${product.name}${isOutOfStock ? ' <span class="wholesale-unavail-tag">Sem Estoque</span>' : ''}</td>
+      <td>${product.category || '—'}</td>
       <td>${hasPurchase ? formatBRL(product.priceLastPurchase) : '—'}</td>
       <td>${formatBRL(product.priceWholesale)}</td>
       <td>${formatBRL(product.priceSuggested)}</td>
       <td class="admin-profit-cell ${profitClass}">
         ${hasPurchase ? `<span class="admin-profit-value">${formatBRL(profit)}</span><span class="admin-profit-percent">${profitPercent}%</span>` : '—'}
       </td>
-      <td>${product.quantity || 0}</td>
+      <td style="font-weight:700; ${isOutOfStock ? 'color: var(--danger);' : ''}">${product.quantity || 0}</td>
       <td>
         <div class="admin-actions">
           <button class="btn-icon-only" title="Editar" onclick="openProductForm('${product.id}')"><i data-lucide="edit-2" style="width:15px;height:15px;"></i></button>
@@ -454,6 +487,175 @@ function renderAdminProductsList() {
   });
   lucide.createIcons();
 }
+
+// ==========================================
+// GERADOR DE LISTA DE COMPRAS (PRODUTOS EM FALTA)
+// ==========================================
+function getOutOfStockProducts() {
+  return allProducts
+    .filter(p => p.unavailable || (parseInt(p.quantity) || 0) <= 0)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
+}
+
+function openShoppingListModal() {
+  const modal = document.getElementById("shopping-list-modal");
+  const content = document.getElementById("shopping-list-content");
+  const summary = document.getElementById("shopping-list-summary");
+  if (!modal || !content) return;
+
+  const outOfStock = getOutOfStockProducts(); // já em A-Z
+  content.innerHTML = "";
+
+  if (outOfStock.length === 0) {
+    content.innerHTML = `
+      <div class="empty-state" style="padding: 2.5rem 1rem;">
+        <i data-lucide="check-circle-2" style="width:52px;height:52px; color: #25d366;"></i>
+        <p style="font-weight:700; font-size: 1rem;">Todos os produtos estão em estoque!</p>
+        <span style="font-size:0.8rem; color: var(--text-muted);">Não há nenhum item marcado como esgotado ou com quantidade zero.</span>
+      </div>
+    `;
+    if (summary) summary.textContent = "0 itens a repor";
+  } else {
+    if (summary) summary.textContent = `${outOfStock.length} ${outOfStock.length === 1 ? "item" : "itens"} a repor no estoque (A-Z)`;
+
+    outOfStock.forEach(product => {
+      const card = document.createElement("div");
+      card.className = "shopping-list-card";
+      const catBrand = [product.category, product.brand].filter(Boolean).join(" · ");
+      card.innerHTML = `
+        <img src="${product.image}" alt="${product.name}" class="shopping-list-thumb">
+        <div class="shopping-list-info">
+          <div class="shopping-list-title">${product.name}</div>
+          <div class="shopping-list-meta">${catBrand || "Sem categoria"}</div>
+        </div>
+        <div class="shopping-list-prices">
+          ${product.priceLastPurchase > 0 ? `<div class="shopping-list-price-last">Últ. Compra: ${formatBRL(product.priceLastPurchase)}</div>` : ""}
+          <span class="shopping-list-badge">Em falta</span>
+        </div>
+      `;
+      content.appendChild(card);
+    });
+  }
+
+  lucide.createIcons();
+  modal.classList.add("active");
+}
+
+function generateShoppingListText() {
+  const outOfStock = getOutOfStockProducts(); // já em A-Z
+  if (outOfStock.length === 0) return "Todos os produtos do catálogo estão em estoque!";
+
+  const today = new Date().toLocaleDateString("pt-BR");
+  let text = `📋 *LISTA DE COMPRAS — GS2 IMPORTS*\n`;
+  text += `📅 ${today}\n`;
+  text += `────────────────────────────────\n`;
+  outOfStock.forEach((p, idx) => {
+    const meta = [p.category, p.brand].filter(Boolean).join(" · ");
+    const priceText = p.priceLastPurchase > 0 ? ` — Últ. Compra: ${formatBRL(p.priceLastPurchase)}` : "";
+    text += `${idx + 1}. *${p.name}*${meta ? ` [${meta}]` : ""}${priceText}\n`;
+  });
+  text += `────────────────────────────────\n`;
+  text += `📦 *Total a repor:* ${outOfStock.length} produto(s)`;
+  return text;
+}
+
+function copyShoppingList() {
+  const text = generateShoppingListText();
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Lista de compras copiada para a área de transferência!");
+  }).catch(err => {
+    console.error("Erro ao copiar:", err);
+    showToast("Erro ao copiar lista de compras.", true);
+  });
+}
+
+function sendShoppingListWhatsApp() {
+  const text = generateShoppingListText();
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+}
+
+// ==========================================
+// GERADOR DE TABELA DE ATACADO (LISTA MODAL)
+// ==========================================
+function getAvailableWholesaleProducts() {
+  return allProducts
+    .filter(p => !p.unavailable && (parseInt(p.quantity) || 0) > 0)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
+}
+
+function openWholesaleListModal() {
+  const modal = document.getElementById("wholesale-list-modal");
+  const content = document.getElementById("wholesale-list-content");
+  const summary = document.getElementById("wholesale-list-summary");
+  if (!modal || !content) return;
+
+  const products = getAvailableWholesaleProducts(); // já em A-Z
+  content.innerHTML = "";
+
+  if (products.length === 0) {
+    content.innerHTML = `
+      <div class="empty-state" style="padding: 2.5rem 1rem;">
+        <i data-lucide="package-open" style="width:52px;height:52px; opacity:0.4;"></i>
+        <p style="font-weight:700; font-size: 1rem;">Nenhum produto disponível no momento.</p>
+      </div>
+    `;
+    if (summary) summary.textContent = "0 produtos no atacado";
+  } else {
+    if (summary) summary.textContent = `${products.length} produto(s) disponíveis — ordem A-Z`;
+
+    products.forEach(product => {
+      const card = document.createElement("div");
+      card.className = "wholesale-list-card";
+      const catBrand = [product.category, product.brand].filter(Boolean).join(" · ");
+      card.innerHTML = `
+        <img src="${product.image}" alt="${product.name}" class="wholesale-list-thumb">
+        <div class="wholesale-list-info">
+          <div class="wholesale-list-title">${product.name}</div>
+          <div class="wholesale-list-meta">${catBrand || "Sem categoria"}</div>
+        </div>
+        <div class="wholesale-list-price">${formatBRL(product.priceWholesale)}</div>
+      `;
+      content.appendChild(card);
+    });
+  }
+
+  lucide.createIcons();
+  modal.classList.add("active");
+}
+
+function generateWholesaleListText() {
+  const products = getAvailableWholesaleProducts(); // já em A-Z
+  if (products.length === 0) return "Nenhum produto disponível no momento.";
+
+  const today = new Date().toLocaleDateString("pt-BR");
+  let text = `💛 *TABELA DE ATACADO — GS2 IMPORTS*\n`;
+  text += `📅 ${today}\n`;
+  text += `────────────────────────────────\n`;
+  products.forEach((p, idx) => {
+    const meta = [p.category, p.brand].filter(Boolean).join(" · ");
+    text += `${idx + 1}. *${p.name}*${meta ? ` [${meta}]` : ""} — *${formatBRL(p.priceWholesale)}*\n`;
+  });
+  text += `────────────────────────────────\n`;
+  text += `📦 *Total de itens disponíveis:* ${products.length} produto(s)\n`;
+  text += `📲 _GS2 Imports — Contato: wa.me/${WHATSAPP_NUMBER}_`;
+  return text;
+}
+
+function copyWholesaleList() {
+  const text = generateWholesaleListText();
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Tabela de atacado copiada para a área de transferência!");
+  }).catch(err => {
+    console.error("Erro ao copiar:", err);
+    showToast("Erro ao copiar tabela de atacado.", true);
+  });
+}
+
+function sendWholesaleListWhatsApp() {
+  const text = generateWholesaleListText();
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+}
+
 
 // ==========================================
 // DETALHES DO PRODUTO
@@ -1018,9 +1220,75 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("cart-modal").classList.add("active");
   });
 
-  document.getElementById("btn-send-whatsapp-order").addEventListener("click", () => {
-    sendCartToWhatsApp();
+  // ── ADMIN AVAILABILITY FILTERS & SEARCH ──
+  const adminAvailTabs = document.querySelectorAll("#admin-availability-tabs .filter-chip");
+  adminAvailTabs.forEach(chip => {
+    chip.addEventListener("click", () => {
+      adminAvailTabs.forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      adminAvailabilityFilter = chip.dataset.status || "all";
+      renderAdminProductsList();
+    });
   });
+
+  const adminSearchInput = document.getElementById("admin-search-input");
+  if (adminSearchInput) {
+    adminSearchInput.addEventListener("input", (e) => {
+      adminSearchQuery = e.target.value;
+      renderAdminProductsList();
+    });
+  }
+
+  // ── SHOPPING LIST EVENTS ──
+  const btnShoppingList = document.getElementById("btn-shopping-list");
+  if (btnShoppingList) {
+    btnShoppingList.addEventListener("click", () => {
+      openShoppingListModal();
+    });
+  }
+
+  const btnCopyShoppingList = document.getElementById("btn-copy-shopping-list");
+  if (btnCopyShoppingList) {
+    btnCopyShoppingList.addEventListener("click", () => {
+      copyShoppingList();
+    });
+  }
+
+  const btnWhatsappShoppingList = document.getElementById("btn-whatsapp-shopping-list");
+  if (btnWhatsappShoppingList) {
+    btnWhatsappShoppingList.addEventListener("click", () => {
+      sendShoppingListWhatsApp();
+    });
+  }
+
+  // ── WHOLESALE LIST MODAL EVENTS ──
+  const btnWholesaleShareList = document.getElementById("btn-wholesale-share-list");
+  if (btnWholesaleShareList) {
+    btnWholesaleShareList.addEventListener("click", () => {
+      openWholesaleListModal();
+    });
+  }
+
+  const btnCloseWholesaleModal = document.getElementById("btn-close-wholesale-list-modal");
+  if (btnCloseWholesaleModal) {
+    btnCloseWholesaleModal.addEventListener("click", () => {
+      document.getElementById("wholesale-list-modal")?.classList.remove("active");
+    });
+  }
+
+  const btnCopyWholesaleList = document.getElementById("btn-copy-wholesale-list");
+  if (btnCopyWholesaleList) {
+    btnCopyWholesaleList.addEventListener("click", () => {
+      copyWholesaleList();
+    });
+  }
+
+  const btnWhatsappWholesaleList = document.getElementById("btn-whatsapp-wholesale-list");
+  if (btnWhatsappWholesaleList) {
+    btnWhatsappWholesaleList.addEventListener("click", () => {
+      sendWholesaleListWhatsApp();
+    });
+  }
 
   // ── INITIAL ICONS ──
   lucide.createIcons();

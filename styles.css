@@ -88,15 +88,24 @@
 /* ==========================================
    ESTILOS GERAIS DA PÁGINA
    ========================================== */
+html {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--base-bg);
   color: var(--text-main);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
   display: flex;
   flex-direction: column;
   transition: background-color var(--transition-normal), color var(--transition-normal);
   overflow-x: hidden;
+  position: relative;
 }
 
 /* Faixa de Anúncio Superior — Preto e Dourado de Luxo */
@@ -754,7 +763,12 @@ main {
 }
 
 .pcard--unavailable {
-  opacity: 0.6;
+  opacity: 0.72;
+}
+
+/* Imagem fica em grayscale quando esgotado */
+.pcard--unavailable .pcard-image {
+  filter: grayscale(100%) brightness(0.85);
 }
 
 .pcard-image-area {
@@ -772,20 +786,28 @@ main {
   max-height: 160px;
   object-fit: contain;
   mix-blend-mode: multiply;
+  transition: filter 0.2s ease;
 }
 
+/* Badge discreto no canto superior esquerdo — substitui o overlay vermelho */
 .pcard-unavail {
   position: absolute;
-  inset: 0;
-  background: rgba(227,36,43,0.8);
+  top: 0.55rem;
+  left: 0.55rem;
+  background: rgba(30, 30, 30, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  gap: 0.25rem;
 }
 
 .pcard-gender-badge {
@@ -1775,32 +1797,7 @@ footer a:hover {
   text-decoration: underline;
 }
 
-/* ==========================================
-   RESPONSIVIDADE
-   ========================================== */
-@media (max-width: 800px) {
-  .header-container {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 1rem;
-  }
 
-  .logo {
-    order: -1;
-  }
-
-  .search-bar-container {
-    max-width: 100%;
-  }
-
-  .nav-actions {
-    justify-content: center;
-  }
-
-  main {
-    padding: 1rem;
-  }
-}
 
 /* ==========================================
    CARRINHO DE COMPRAS E PEDIDOS
@@ -2064,4 +2061,413 @@ footer a:hover {
   color: var(--danger);
   margin-left: 0.35rem;
   vertical-align: middle;
+}
+
+/* ==========================================
+   ESTILOS DA LISTA DE COMPRAS (ADMIN)
+   ========================================== */
+.shopping-list-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-sm);
+  border-left: 4px solid var(--danger);
+  transition: all var(--transition-fast);
+}
+
+.shopping-list-card:hover {
+  background: var(--base-bg);
+}
+
+.shopping-list-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background-color: var(--base-bg);
+  flex-shrink: 0;
+}
+
+.shopping-list-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.shopping-list-title {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.shopping-list-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.shopping-list-prices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.shopping-list-price-last {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.shopping-list-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(227, 36, 43, 0.12);
+  color: var(--danger);
+}
+
+/* ==========================================
+   ESTILOS DA TABELA DE ATACADO (LISTA MODAL)
+   ========================================== */
+.wholesale-list-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-sm);
+  border-left: 4px solid #c5a059;
+  transition: all var(--transition-fast);
+}
+
+.wholesale-list-card:hover {
+  background: var(--base-bg);
+}
+
+.wholesale-list-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background-color: var(--base-bg);
+  flex-shrink: 0;
+}
+
+.wholesale-list-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.wholesale-list-title {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.wholesale-list-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.wholesale-list-price {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #c5a059;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+
+html, body {
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+header,
+main,
+footer,
+.announcement-bar,
+.header-container,
+.controls-bar,
+.product-grid,
+.product-list-view,
+.admin-dashboard,
+.admin-table-container,
+.modal-overlay {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+  .announcement-bar {
+    font-size: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .header-container {
+    padding: 0.75rem 0.85rem;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.65rem;
+  }
+
+  .logo-img {
+    height: 60px !important;
+    width: 60px !important;
+    border-radius: 10px !important;
+  }
+
+  .search-bar-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .nav-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .nav-actions .btn {
+    flex: 1 !important;
+    padding: 0.55rem 0.35rem !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+    justify-content: center !important;
+  }
+
+  main {
+    padding: 0.75rem 0.5rem 2rem !important;
+    gap: 1rem !important;
+  }
+
+  .controls-bar {
+    padding: 0.75rem 0.5rem !important;
+    border-radius: var(--border-radius-sm) !important;
+    overflow-x: hidden !important;
+  }
+
+  .filter-pills-row,
+  .filter-secondary-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .filter-pills-nav,
+  .filter-chips-group,
+  #categories-tabs,
+  #brand-filter-tabs,
+  #gender-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+  }
+
+  .filter-pills-nav::-webkit-scrollbar,
+  .filter-chips-group::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .filter-pill,
+  .filter-chip,
+  .brand-filter-tab,
+  .category-tab,
+  .gender-tab {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.85rem !important;
+  }
+
+  .filter-secondary-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.55rem !important;
+  }
+
+  .filter-controls-right {
+    margin-left: 0 !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  .sort-select {
+    flex: 1 !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Grid de Produtos: 2 colunas preenchendo 100% da largura do celular */
+  .product-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.6rem !important;
+    padding: 0.5rem 0 !important;
+    width: 100% !important;
+  }
+
+  .pcard {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .pcard-image-area {
+    padding: 0.85rem 0.5rem !important;
+    min-height: 130px !important;
+  }
+
+  .pcard-image {
+    max-height: 120px !important;
+  }
+
+  .pcard-body {
+    padding: 0.65rem 0.6rem !important;
+  }
+
+  .pcard-name {
+    font-size: 0.78rem !important;
+    min-height: 2.1rem !important;
+  }
+
+  .pcard-price {
+    font-size: 0.95rem !important;
+  }
+
+  .pcard-cart-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Modo Lista: 100% responsivo */
+  .product-list-view {
+    padding: 0.5rem 0 2rem !important;
+    width: 100% !important;
+  }
+
+  .hcard-header {
+    display: none !important;
+  }
+
+  .hcard {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    padding: 0.75rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .hcard-body {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .hcard-title {
+    white-space: normal !important;
+    word-break: break-word !important;
+    font-size: 0.82rem !important;
+  }
+
+  .hcard-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.45rem !important;
+  }
+
+  /* Painel Admin */
+  .admin-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .admin-actions-bar {
+    width: 100% !important;
+  }
+
+  .admin-actions-bar .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 0.72rem !important;
+    padding: 0.5rem 0.35rem !important;
+  }
+
+  .admin-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Modais e Botão do Carrinho */
+  .modal-overlay {
+    padding: 0.5rem !important;
+  }
+
+  .modal-container {
+    max-height: 94vh !important;
+    width: 100% !important;
+  }
+
+  .floating-cart-btn {
+    bottom: 1.25rem !important;
+    right: 1.25rem !important;
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .toast-container {
+    bottom: 1rem !important;
+    right: 0.5rem !important;
+    left: 0.5rem !important;
+  }
+}
+
+@media (max-width: 440px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+  }
+
+  .pcard-name {
+    font-size: 0.74rem !important;
+  }
+
+  .pcard-price {
+    font-size: 0.88rem !important;
+  }
 }
