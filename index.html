@@ -117,6 +117,10 @@
             <i data-lucide="clipboard-list"></i>
             <span>Lista de Compras</span>
           </button>
+          <button id="btn-sale-simulator" class="btn btn-secondary" style="border-color: #8b5cf6; color: #8b5cf6; background: rgba(139,92,246,0.08);" title="Montar orçamento e calcular lucro no atacado e varejo">
+            <i data-lucide="calculator"></i>
+            <span>Simular Venda</span>
+          </button>
           <button id="btn-back-to-catalog" class="btn btn-secondary" style="border-color: var(--accent-blue); color: var(--accent-blue);">
             <i data-lucide="arrow-left"></i>
             <span>Voltar ao Catálogo</span>
@@ -571,6 +575,75 @@
             <i data-lucide="message-circle" style="width: 15px; height: 15px;"></i>
             <span>WhatsApp</span>
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE SIMULAÇÃO DE VENDA E LUCRO (ADMIN) -->
+  <div class="modal-overlay" id="sale-simulator-modal">
+    <div class="modal-container sale-simulator-modal-container">
+      <div class="sale-simulator-header">
+        <div>
+          <h2><i data-lucide="calculator"></i> Simulador de Venda e Lucro</h2>
+          <p>Clique em Adicionar para incluir 1 unidade. Altere a quantidade somente quando precisar de mais unidades.</p>
+        </div>
+        <button class="btn-icon-only modal-close-btn" id="btn-close-sale-simulator" aria-label="Fechar simulador">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="sale-simulator-toolbar">
+        <div class="sale-simulator-search-wrap">
+          <i data-lucide="search"></i>
+          <input type="text" id="sale-simulator-search" class="form-control" placeholder="Buscar produto...">
+        </div>
+        <button type="button" class="btn btn-secondary" id="btn-clear-sale-simulator">
+          <i data-lucide="trash-2"></i><span>Limpar</span>
+        </button>
+      </div>
+
+      <div class="sale-simulator-table-wrap">
+        <table class="sale-simulator-table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Adicionar</th>
+              <th>Custo</th>
+              <th>Atacado</th>
+              <th>Venda normal</th>
+              <th>Qtd.</th>
+            </tr>
+          </thead>
+          <tbody id="sale-simulator-products"></tbody>
+        </table>
+      </div>
+
+      <div class="sale-simulator-summary">
+        <div class="sale-summary-card">
+          <span>Custo total</span>
+          <strong id="sale-total-cost">R$ 0,00</strong>
+        </div>
+        <div class="sale-summary-card sale-summary-wholesale">
+          <span>Total atacado</span>
+          <strong id="sale-total-wholesale">R$ 0,00</strong>
+          <small>Lucro: <b id="sale-profit-wholesale">R$ 0,00</b> (<b id="sale-margin-wholesale">0%</b>)</small>
+        </div>
+        <div class="sale-summary-card sale-summary-retail">
+          <span>Total venda normal</span>
+          <strong id="sale-total-retail">R$ 0,00</strong>
+          <small>Lucro: <b id="sale-profit-retail">R$ 0,00</b> (<b id="sale-margin-retail">0%</b>)</small>
+        </div>
+      </div>
+
+      <div class="sale-simulator-footer">
+        <span id="sale-simulator-items-count">0 item(ns) selecionado(s)</span>
+        <div>
+          <button type="button" class="btn btn-secondary" id="btn-copy-wholesale-quote">Copiar orçamento atacado</button>
+          <button type="button" class="btn btn-secondary" id="btn-copy-retail-quote">Copiar venda normal</button>
+          <button type="button" class="btn" id="btn-whatsapp-wholesale-quote">WhatsApp atacado</button>
+          <button type="button" class="btn" id="btn-whatsapp-retail-quote">WhatsApp normal</button>
+          <button type="button" class="btn" id="btn-whatsapp-admin-quote">WhatsApp admin</button>
         </div>
       </div>
     </div>

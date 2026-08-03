@@ -2471,3 +2471,41 @@ footer,
     font-size: 0.88rem !important;
   }
 }
+
+/* ==========================================
+   SIMULADOR DE VENDA E LUCRO — ADMIN
+   ========================================== */
+.sale-simulator-modal-container { max-width: 1050px; width: calc(100% - 2rem); max-height: 92vh; display:flex; flex-direction:column; }
+.sale-simulator-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--card-border); display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
+.sale-simulator-header h2 { font-family:var(--font-heading); font-size:1.25rem; display:flex; align-items:center; gap:.5rem; }
+.sale-simulator-header h2 svg { color:#8b5cf6; }
+.sale-simulator-header p { margin-top:.3rem; color:var(--text-muted); font-size:.82rem; }
+.sale-simulator-toolbar { padding:1rem 1.5rem; display:flex; gap:.75rem; align-items:center; border-bottom:1px solid var(--card-border); }
+.sale-simulator-search-wrap { position:relative; flex:1; }
+.sale-simulator-search-wrap > svg { position:absolute; left:.8rem; top:50%; transform:translateY(-50%); width:16px; color:var(--text-muted); }
+.sale-simulator-search-wrap input { padding-left:2.4rem; }
+.sale-simulator-table-wrap { overflow:auto; flex:1; padding:0 1.5rem; }
+.sale-simulator-table { width:100%; border-collapse:collapse; min-width:760px; }
+.sale-simulator-table th, .sale-simulator-table td { padding:.75rem; border-bottom:1px solid var(--card-border); text-align:left; font-size:.8rem; }
+.sale-simulator-table th { position:sticky; top:0; background:var(--card-bg); z-index:1; color:var(--text-muted); text-transform:uppercase; font-size:.68rem; }
+.sale-product-cell { display:flex; align-items:center; gap:.65rem; min-width:280px; }
+.sale-product-cell img { width:42px; height:42px; border-radius:6px; object-fit:cover; border:1px solid var(--card-border); }
+.sale-product-cell div { display:flex; flex-direction:column; gap:.15rem; }
+.sale-product-cell small { color:var(--text-muted); }
+.sale-add-btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-width:105px; padding:.48rem .75rem; border:1px solid var(--accent-blue); border-radius:7px; background:transparent; color:var(--accent-blue); font-weight:700; font-size:.72rem; cursor:pointer; transition:all .2s ease; }
+.sale-add-btn:hover { background:var(--accent-blue-glow); transform:translateY(-1px); }
+.sale-add-btn.added { border-color:#22a559; background:rgba(34,165,89,.10); color:#198447; }
+.sale-qty-input { width:70px; padding:.45rem; text-align:center; border:1px solid var(--card-border); border-radius:6px; background:var(--base-bg); color:var(--text-main); font-weight:700; }
+.sale-simulator-summary { padding:1rem 1.5rem; display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; background:var(--base-bg); border-top:1px solid var(--card-border); }
+.sale-summary-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:1rem; display:flex; flex-direction:column; gap:.3rem; }
+.sale-summary-card span { color:var(--text-muted); font-size:.72rem; text-transform:uppercase; font-weight:700; }
+.sale-summary-card strong { font-family:var(--font-heading); font-size:1.15rem; }
+.sale-summary-card small { color:var(--text-muted); }
+.sale-summary-wholesale { border-left:4px solid #c5a059; }
+.sale-summary-retail { border-left:4px solid var(--accent-blue); }
+.sale-simulator-footer { padding:1rem 1.5rem; border-top:1px solid var(--card-border); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+.sale-simulator-footer > span { font-size:.8rem; font-weight:700; color:var(--text-muted); }
+.sale-simulator-footer > div { display:flex; gap:.5rem; flex-wrap:wrap; }
+#btn-whatsapp-wholesale-quote, #btn-whatsapp-retail-quote { background:linear-gradient(135deg,#1fbe5a,#25d366); color:#fff; border:none; }
+#btn-whatsapp-admin-quote { background:linear-gradient(135deg,#5b21b6,#8b5cf6); color:#fff; border:none; }
+@media (max-width:760px){ .sale-simulator-summary{grid-template-columns:1fr;} .sale-simulator-footer{align-items:stretch;} .sale-simulator-footer>div{flex-direction:column;width:100%;} }

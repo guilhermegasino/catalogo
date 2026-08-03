@@ -545,18 +545,15 @@ function generateShoppingListText() {
   const outOfStock = getOutOfStockProducts(); // já em A-Z
   if (outOfStock.length === 0) return "Todos os produtos do catálogo estão em estoque!";
 
-  const today = new Date().toLocaleDateString("pt-BR");
-  let text = `📋 *LISTA DE COMPRAS — GS2 IMPORTS*\n`;
-  text += `📅 ${today}\n`;
-  text += `────────────────────────────────\n`;
+  let text = `📋 *LISTA DE COMPRAS — GS2 IMPORTS*
+`;
+  text += `────────────────────────────────
+`;
   outOfStock.forEach((p, idx) => {
-    const meta = [p.category, p.brand].filter(Boolean).join(" · ");
-    const priceText = p.priceLastPurchase > 0 ? ` — Últ. Compra: ${formatBRL(p.priceLastPurchase)}` : "";
-    text += `${idx + 1}. *${p.name}*${meta ? ` [${meta}]` : ""}${priceText}\n`;
+    text += `${idx + 1}. ${p.name}
+`;
   });
-  text += `────────────────────────────────\n`;
-  text += `📦 *Total a repor:* ${outOfStock.length} produto(s)`;
-  return text;
+  return text.trim();
 }
 
 function copyShoppingList() {
