@@ -12,6 +12,8 @@ const CATEGORIES_KEY     = "gs2_categories";
 
 let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategory = "";
 let cart = [];
+let saleSimulation = new Map();
+let saleSimulationSearch = "";
 let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
 let adminSortCol = null, adminSortDir = "asc", uploadedImageFile = null, currentPreviewUrl = null;
 let catalogSortCol = null, catalogSortDir = "asc";
@@ -545,13 +547,10 @@ function generateShoppingListText() {
   const outOfStock = getOutOfStockProducts(); // já em A-Z
   if (outOfStock.length === 0) return "Todos os produtos do catálogo estão em estoque!";
 
-  let text = `📋 *LISTA DE COMPRAS — GS2 IMPORTS*
-`;
-  text += `────────────────────────────────
-`;
+  let text = `📋 *LISTA DE COMPRAS — GS2 IMPORTS*\n`;
+  text += `────────────────────────────────\n`;
   outOfStock.forEach((p, idx) => {
-    text += `${idx + 1}. ${p.name}
-`;
+    text += `${idx + 1}. ${p.name}\n`;
   });
   return text.trim();
 }
@@ -653,6 +652,216 @@ function sendWholesaleListWhatsApp() {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 }
 
+
+// ==========================================
+// SIMULADOR DE VENDA E LUCRO (ADMIN)
+// ==========================================
+function getSaleSimulationItems() {
+  return [...saleSimulation.entries()]
+    .map(([productId, quantity]) => {
+      const product = allProducts.find(p => String(p.id) === String(productId));
+      return product ? { product, quantity } : null;
+    })
+    .filter(Boolean);
+}
+
+function openSaleSimulator() {
+  saleSimulationSearch = "";
+  const search = document.getElementById("sale-simulator-search");
+  if (search) search.value = "";
+  renderSaleSimulatorProducts();
+  document.getElementById("sale-simulator-modal")?.classList.add("active");
+}
+
+function updateSaleSimulatorRowState(productId) {
+  const quantity = saleSimulation.get(String(productId)) || 0;
+  const button = document.querySelector(`.sale-add-btn[data-product-id="${productId}"]`);
+  if (!button) return;
+  button.classList.toggle("added", quantity > 0);
+  button.innerHTML = quantity > 0
+    ? '<i data-lucide="check" style="width:14px;height:14px;"></i><span>Adicionado</span>'
+    : '<i data-lucide="plus" style="width:14px;height:14px;"></i><span>Adicionar</span>';
+  lucide.createIcons();
+}
+
+function addSaleSimulationProduct(productId) {
+  const key = String(productId);
+  if (!saleSimulation.has(key)) saleSimulation.set(key, 1);
+
+  const input = document.querySelector(`.sale-qty-input[data-product-id="${productId}"]`);
+  if (input) input.value = saleSimulation.get(key);
+
+  updateSaleSimulatorRowState(productId);
+  updateSaleSimulatorSummary();
+}
+
+function setSaleSimulationQuantity(productId, value) {
+  const quantity = Math.max(0, parseInt(value, 10) || 0);
+  if (quantity === 0) saleSimulation.delete(String(productId));
+  else saleSimulation.set(String(productId), quantity);
+  updateSaleSimulatorRowState(productId);
+  updateSaleSimulatorSummary();
+}
+
+function renderSaleSimulatorProducts() {
+  const tbody = document.getElementById("sale-simulator-products");
+  if (!tbody) return;
+  const q = saleSimulationSearch.trim().toLowerCase();
+  const products = allProducts
+    .filter(p => !q || (p.name || "").toLowerCase().includes(q) || (p.brand || "").toLowerCase().includes(q))
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
+
+  tbody.innerHTML = "";
+  products.forEach(product => {
+    const qty = saleSimulation.get(String(product.id)) || 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <div class="sale-product-cell">
+          <img src="${product.image}" alt="${product.name}">
+          <div><strong>${product.name}</strong><small>${[product.category, product.brand].filter(Boolean).join(" · ")}</small></div>
+        </div>
+      </td>
+      <td>
+        <button type="button" class="sale-add-btn${qty > 0 ? ' added' : ''}" data-product-id="${product.id}">
+          <i data-lucide="${qty > 0 ? 'check' : 'plus'}" style="width:14px;height:14px;"></i>
+          <span>${qty > 0 ? 'Adicionado' : 'Adicionar'}</span>
+        </button>
+      </td>
+      <td>${formatBRL(product.priceLastPurchase || 0)}</td>
+      <td>${formatBRL(product.priceWholesale || 0)}</td>
+      <td>${formatBRL(product.priceSuggested || 0)}</td>
+      <td><input class="sale-qty-input" type="number" min="0" step="1" value="${qty}" data-product-id="${product.id}" title="Altere somente quando precisar de mais de uma unidade"></td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll(".sale-add-btn").forEach(button => {
+    button.addEventListener("click", () => addSaleSimulationProduct(button.dataset.productId));
+  });
+  tbody.querySelectorAll(".sale-qty-input").forEach(input => {
+    input.addEventListener("input", e => setSaleSimulationQuantity(e.target.dataset.productId, e.target.value));
+  });
+  lucide.createIcons();
+  updateSaleSimulatorSummary();
+}
+
+function calculateSaleSimulationTotals() {
+  return getSaleSimulationItems().reduce((totals, item) => {
+    const qty = item.quantity;
+    totals.items += qty;
+    totals.cost += (item.product.priceLastPurchase || 0) * qty;
+    totals.wholesale += (item.product.priceWholesale || 0) * qty;
+    totals.retail += (item.product.priceSuggested || 0) * qty;
+    return totals;
+  }, { items: 0, cost: 0, wholesale: 0, retail: 0 });
+}
+
+function updateSaleSimulatorSummary() {
+  const totals = calculateSaleSimulationTotals();
+  const wholesaleProfit = totals.wholesale - totals.cost;
+  const retailProfit = totals.retail - totals.cost;
+  const wholesaleMargin = totals.cost > 0 ? (wholesaleProfit / totals.cost) * 100 : 0;
+  const retailMargin = totals.cost > 0 ? (retailProfit / totals.cost) * 100 : 0;
+
+  const values = {
+    "sale-total-cost": formatBRL(totals.cost),
+    "sale-total-wholesale": formatBRL(totals.wholesale),
+    "sale-profit-wholesale": formatBRL(wholesaleProfit),
+    "sale-margin-wholesale": `${wholesaleMargin.toFixed(1)}%`,
+    "sale-total-retail": formatBRL(totals.retail),
+    "sale-profit-retail": formatBRL(retailProfit),
+    "sale-margin-retail": `${retailMargin.toFixed(1)}%`,
+    "sale-simulator-items-count": `${totals.items} item(ns) selecionado(s)`
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
+function generateSaleQuoteText(mode) {
+  const items = getSaleSimulationItems();
+  if (items.length === 0) return "";
+  const isWholesale = mode === "wholesale";
+  const title = isWholesale ? "ORÇAMENTO DE ATACADO" : "ORÇAMENTO DE VENDA";
+  let total = 0;
+  let text = `*${title} — GS2 IMPORTS*\n\n`;
+  items.forEach(item => {
+    const price = isWholesale ? item.product.priceWholesale : item.product.priceSuggested;
+    const subtotal = price * item.quantity;
+    total += subtotal;
+    text += `${item.quantity}x ${item.product.name} — ${formatBRL(price)} cada — ${formatBRL(subtotal)}\n`;
+  });
+  text += `\n*TOTAL: ${formatBRL(total)}*`;
+  return text;
+}
+
+function copySaleQuote(mode) {
+  const text = generateSaleQuoteText(mode);
+  if (!text) return showToast("Selecione pelo menos um produto.", true);
+  navigator.clipboard.writeText(text)
+    .then(() => showToast("Orçamento copiado!"))
+    .catch(() => showToast("Não foi possível copiar o orçamento.", true));
+}
+
+function sendSaleQuoteWhatsApp(mode) {
+  const text = generateSaleQuoteText(mode);
+  if (!text) return showToast("Selecione pelo menos um produto.", true);
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+}
+
+function generateSaleAdminText() {
+  const items = getSaleSimulationItems();
+  if (items.length === 0) return "";
+
+  let totalCost = 0;
+  let totalWholesale = 0;
+  let totalRetail = 0;
+  let text = `*RELATÓRIO ADMINISTRATIVO — GS2 IMPORTS*\n\n`;
+
+  items.forEach(item => {
+    const qty = item.quantity;
+    const costUnit = item.product.priceLastPurchase || 0;
+    const wholesaleUnit = item.product.priceWholesale || 0;
+    const retailUnit = item.product.priceSuggested || 0;
+    const costTotal = costUnit * qty;
+    const wholesaleTotal = wholesaleUnit * qty;
+    const retailTotal = retailUnit * qty;
+    const wholesaleProfit = wholesaleTotal - costTotal;
+    const retailProfit = retailTotal - costTotal;
+
+    totalCost += costTotal;
+    totalWholesale += wholesaleTotal;
+    totalRetail += retailTotal;
+
+    text += `*${qty}x ${item.product.name}*\n`;
+    text += `Custo: ${formatBRL(costUnit)} cada | Total ${formatBRL(costTotal)}\n`;
+    text += `Atacado: ${formatBRL(wholesaleUnit)} cada | Total ${formatBRL(wholesaleTotal)} | Lucro ${formatBRL(wholesaleProfit)}\n`;
+    text += `Venda normal: ${formatBRL(retailUnit)} cada | Total ${formatBRL(retailTotal)} | Lucro ${formatBRL(retailProfit)}\n\n`;
+  });
+
+  const totalWholesaleProfit = totalWholesale - totalCost;
+  const totalRetailProfit = totalRetail - totalCost;
+  const wholesaleMargin = totalCost > 0 ? (totalWholesaleProfit / totalCost) * 100 : 0;
+  const retailMargin = totalCost > 0 ? (totalRetailProfit / totalCost) * 100 : 0;
+
+  text += `*RESUMO GERAL*\n`;
+  text += `Custo total: ${formatBRL(totalCost)}\n\n`;
+  text += `*OPERAÇÃO ATACADO*\n`;
+  text += `Venda total: ${formatBRL(totalWholesale)}\n`;
+  text += `Lucro total: ${formatBRL(totalWholesaleProfit)} (${wholesaleMargin.toFixed(1)}%)\n\n`;
+  text += `*OPERAÇÃO VENDA NORMAL*\n`;
+  text += `Venda total: ${formatBRL(totalRetail)}\n`;
+  text += `Lucro total: ${formatBRL(totalRetailProfit)} (${retailMargin.toFixed(1)}%)`;
+
+  return text;
+}
+
+function sendSaleAdminWhatsApp() {
+  const text = generateSaleAdminText();
+  if (!text) return showToast("Selecione pelo menos um produto.", true);
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+}
 
 // ==========================================
 // DETALHES DO PRODUTO
@@ -1271,6 +1480,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       sendShoppingListWhatsApp();
     });
   }
+
+  // ── SALE SIMULATOR EVENTS ──
+  document.getElementById("btn-sale-simulator")?.addEventListener("click", openSaleSimulator);
+  document.getElementById("btn-close-sale-simulator")?.addEventListener("click", () => {
+    document.getElementById("sale-simulator-modal")?.classList.remove("active");
+  });
+  document.getElementById("sale-simulator-search")?.addEventListener("input", e => {
+    saleSimulationSearch = e.target.value;
+    renderSaleSimulatorProducts();
+  });
+  document.getElementById("btn-clear-sale-simulator")?.addEventListener("click", () => {
+    saleSimulation.clear();
+    renderSaleSimulatorProducts();
+  });
+  document.getElementById("btn-copy-wholesale-quote")?.addEventListener("click", () => copySaleQuote("wholesale"));
+  document.getElementById("btn-copy-retail-quote")?.addEventListener("click", () => copySaleQuote("retail"));
+  document.getElementById("btn-whatsapp-wholesale-quote")?.addEventListener("click", () => sendSaleQuoteWhatsApp("wholesale"));
+  document.getElementById("btn-whatsapp-retail-quote")?.addEventListener("click", () => sendSaleQuoteWhatsApp("retail"));
+  document.getElementById("btn-whatsapp-admin-quote")?.addEventListener("click", sendSaleAdminWhatsApp);
 
   // ── WHOLESALE LIST MODAL EVENTS ──
   const btnWholesaleShareList = document.getElementById("btn-wholesale-share-list");
