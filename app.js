@@ -1220,6 +1220,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("cart-modal").classList.add("active");
   });
 
+  // Fecha o modal do carrinho
+  const btnCloseCartModal = document.getElementById("btn-close-cart-modal");
+  if (btnCloseCartModal) {
+    btnCloseCartModal.addEventListener("click", () => {
+      document.getElementById("cart-modal")?.classList.remove("active");
+    });
+  }
+
+  // Envia o pedido do carrinho pelo WhatsApp
+  const btnSendWhatsAppOrder = document.getElementById("btn-send-whatsapp-order");
+  if (btnSendWhatsAppOrder) {
+    btnSendWhatsAppOrder.addEventListener("click", sendCartToWhatsApp);
+  }
+
   // ── ADMIN AVAILABILITY FILTERS & SEARCH ──
   const adminAvailTabs = document.querySelectorAll("#admin-availability-tabs .filter-chip");
   adminAvailTabs.forEach(chip => {
