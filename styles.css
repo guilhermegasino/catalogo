@@ -2063,6 +2063,31 @@ footer a:hover {
   vertical-align: middle;
 }
 
+/* Badge Em Trânsito */
+.transit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(251, 146, 60, 0.15);
+  color: #f97316;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Botão de trânsito nas ações */
+.btn-transit:hover {
+  background: rgba(251, 146, 60, 0.15) !important;
+  border-color: #f97316 !important;
+  color: #f97316 !important;
+}
+
 /* ==========================================
    ESTILOS DA LISTA DE COMPRAS (ADMIN)
    ========================================== */

@@ -2,13 +2,25 @@
 // AUTENTICAÇÃO E CONFIGURAÇÕES GLOBAIS
 // ==========================================
 const ADMIN_SESSION_KEY  = "gs2_admin_authenticated";
-const ADMIN_PASS_KEY     = "gs2_admin_password";
 const DEFAULT_ADMIN_PASS = "gs2admin";
 const WHOLESALE_SESSION_KEY = "gs2_wholesale_authenticated";
 const DEFAULT_WHOLESALE_PASS = "gs2atacado";
 const WHATSAPP_NUMBER    = "5547988614670";
 const BRANDS_KEY         = "gs2_brands";
 const CATEGORIES_KEY     = "gs2_categories";
+
+// Senha salva no Supabase para sincronizar entre dispositivos
+async function getStoredPassword() {
+  try {
+    const { data, error } = await sbClient.from('settings').select('value').eq('key', 'admin_password').single();
+    if (error || !data) return DEFAULT_ADMIN_PASS;
+    return data.value;
+  } catch { return DEFAULT_ADMIN_PASS; }
+}
+
+async function savePasswordToCloud(newPass) {
+  await sbClient.from('settings').upsert({ key: 'admin_password', value: newPass }, { onConflict: 'key' });
+}
 
 let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategory = "";
 let cart = [];
@@ -22,9 +34,9 @@ let editingProductId = null;
 const objectUrlCache = new Map();
 
 function isAdminAuthenticated() { return sessionStorage.getItem(ADMIN_SESSION_KEY) === "true"; }
-function getStoredPassword() { return localStorage.getItem(ADMIN_PASS_KEY) || DEFAULT_ADMIN_PASS; }
-function loginAdmin(password) {
-  if (password === getStoredPassword()) { sessionStorage.setItem(ADMIN_SESSION_KEY, "true"); return true; }
+async function loginAdmin(password) {
+  const storedPass = await getStoredPassword();
+  if (password === storedPass) { sessionStorage.setItem(ADMIN_SESSION_KEY, "true"); return true; }
   return false;
 }
 function logoutAdmin() { sessionStorage.removeItem(ADMIN_SESSION_KEY); }
@@ -463,10 +475,11 @@ function renderAdminProductsList() {
     const isOutOfStock = product.unavailable || (parseInt(product.quantity) || 0) <= 0;
 
     const tr = document.createElement("tr");
-    if (isOutOfStock) tr.style.background = "rgba(239, 68, 68, 0.03)";
+    if (product.inTransit) tr.style.background = "rgba(251, 146, 60, 0.06)";
+    else if (isOutOfStock) tr.style.background = "rgba(239, 68, 68, 0.03)";
     tr.innerHTML = `
       <td><img class="admin-prod-thumb" src="${product.image}" alt="${product.name}"></td>
-      <td style="font-weight:600;">${product.name}${isOutOfStock ? ' <span class="wholesale-unavail-tag">Sem Estoque</span>' : ''}</td>
+      <td style="font-weight:600;">${product.name}${isOutOfStock && !product.inTransit ? ' <span class="wholesale-unavail-tag">Sem Estoque</span>' : ''}${product.inTransit ? ' <span class="transit-tag">Em Trânsito</span>' : ''}</td>
       <td>${product.category || '—'}</td>
       <td>${hasPurchase ? formatBRL(product.priceLastPurchase) : '—'}</td>
       <td>${formatBRL(product.priceWholesale)}</td>
@@ -474,12 +487,15 @@ function renderAdminProductsList() {
       <td class="admin-profit-cell ${profitClass}">
         ${hasPurchase ? `<span class="admin-profit-value">${formatBRL(profit)}</span><span class="admin-profit-percent">${profitPercent}%</span>` : '—'}
       </td>
-      <td style="font-weight:700; ${isOutOfStock ? 'color: var(--danger);' : ''}">${product.quantity || 0}</td>
+      <td style="font-weight:700; ${isOutOfStock && !product.inTransit ? 'color: var(--danger);' : product.inTransit ? 'color: #f97316;' : ''}">${product.quantity || 0}</td>
       <td>
         <div class="admin-actions">
           <button class="btn-icon-only" title="Editar" onclick="openProductForm('${product.id}')"><i data-lucide="edit-2" style="width:15px;height:15px;"></i></button>
           <button class="btn-icon-only" title="${product.unavailable ? 'Marcar como Disponível' : 'Marcar como Sem Estoque'}" onclick="handleToggleAvailability('${product.id}')" style="${product.unavailable ? 'background: rgba(224, 92, 92, 0.25); border-color: var(--danger); color: var(--danger);' : ''}">
             <i data-lucide="${product.unavailable ? 'eye-off' : 'eye'}" style="width:15px;height:15px;"></i>
+          </button>
+          <button class="btn-icon-only btn-transit" title="${product.inTransit ? 'Cancelar Trânsito' : 'Marcar como Em Trânsito'}" onclick="handleToggleTransit('${product.id}')" style="${product.inTransit ? 'background: rgba(251, 146, 60, 0.25); border-color: #f97316; color: #f97316;' : ''}">
+            <i data-lucide="truck" style="width:15px;height:15px;"></i>
           </button>
           <button class="btn-icon-only btn-delete" title="Excluir" onclick="handleDeleteProduct('${product.id}')"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>
         </div>
@@ -495,7 +511,7 @@ function renderAdminProductsList() {
 // ==========================================
 function getOutOfStockProducts() {
   return allProducts
-    .filter(p => p.unavailable || (parseInt(p.quantity) || 0) <= 0)
+    .filter(p => (p.unavailable || (parseInt(p.quantity) || 0) <= 0) && !p.inTransit)
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }));
 }
 
@@ -1029,6 +1045,23 @@ async function handleToggleAvailability(id) {
   }
 }
 
+async function handleToggleTransit(id) {
+  const product = allProducts.find(p => String(p.id) === String(id));
+  if (!product) return;
+
+  product.inTransit = !product.inTransit;
+
+  try {
+    await CatalogDB.save(product);
+    showToast(product.inTransit ? "✈️ Produto marcado como Em Trânsito! Removido da lista de compras." : "Trânsito cancelado. Produto voltou à lista de compras.");
+    await loadProductsData();
+  } catch (error) {
+    console.error("Erro ao alterar trânsito:", error);
+    const msg = error?.message || error?.details || JSON.stringify(error);
+    showToast("Falha ao atualizar trânsito: " + msg, "error");
+  }
+}
+
 // ==========================================
 // TOAST NOTIFICATIONS
 // ==========================================
@@ -1146,12 +1179,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ── LOGIN FORM ──
-  document.getElementById("admin-login-form").addEventListener("submit", (e) => {
+  document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const password = document.getElementById("admin-login-password").value;
     const errorMsg = document.getElementById("admin-login-error");
+    const submitBtn = document.querySelector("#admin-login-form button[type='submit']");
 
-    if (loginAdmin(password)) {
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Verificando..."; }
+
+    if (await loginAdmin(password)) {
       adminLoginModal.classList.remove("active");
       document.getElementById("admin-login-password").value = "";
       errorMsg.textContent = "";
@@ -1166,6 +1202,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       adminLoginModal.querySelector(".modal-container").style.animation = "shake 0.5s";
       setTimeout(() => { adminLoginModal.querySelector(".modal-container").style.animation = ""; }, 500);
     }
+
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Entrar"; }
   });
 
   // ── PASSWORD TOGGLE ──
@@ -1207,22 +1245,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("change-password-modal").classList.add("active");
   });
 
-  document.getElementById("change-password-form").addEventListener("submit", (e) => {
+  document.getElementById("change-password-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const current = document.getElementById("current-password").value;
     const newPass = document.getElementById("new-password").value;
     const confirm = document.getElementById("confirm-password").value;
     const errorMsg = document.getElementById("change-pass-error");
+    const saveBtn = document.querySelector("#change-password-form button[type='submit']");
 
-    if (current !== getStoredPassword()) { errorMsg.textContent = "Senha atual incorreta."; return; }
+    const storedPass = await getStoredPassword();
+    if (current !== storedPass) { errorMsg.textContent = "Senha atual incorreta."; return; }
     if (newPass.length < 4) { errorMsg.textContent = "Nova senha deve ter pelo menos 4 caracteres."; return; }
     if (newPass !== confirm) { errorMsg.textContent = "Novas senhas não conferem."; return; }
 
-    localStorage.setItem(ADMIN_PASS_KEY, newPass);
-    errorMsg.textContent = "";
-    document.getElementById("change-password-form").reset();
-    document.getElementById("change-password-modal").classList.remove("active");
-    showToast("Senha alterada com sucesso!");
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Salvando..."; }
+    try {
+      await savePasswordToCloud(newPass);
+      errorMsg.textContent = "";
+      document.getElementById("change-password-form").reset();
+      document.getElementById("change-password-modal").classList.remove("active");
+      showToast("✅ Senha alterada e sincronizada em todos os dispositivos!");
+    } catch (err) {
+      errorMsg.textContent = "Erro ao salvar senha. Tente novamente.";
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Salvar"; }
+    }
   });
 
   // ── PRODUCT FORM ──
