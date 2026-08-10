@@ -2534,3 +2534,100 @@ footer,
 #btn-whatsapp-wholesale-quote, #btn-whatsapp-retail-quote { background:linear-gradient(135deg,#1fbe5a,#25d366); color:#fff; border:none; }
 #btn-whatsapp-admin-quote { background:linear-gradient(135deg,#5b21b6,#8b5cf6); color:#fff; border:none; }
 @media (max-width:760px){ .sale-simulator-summary{grid-template-columns:1fr;} .sale-simulator-footer{align-items:stretch;} .sale-simulator-footer>div{flex-direction:column;width:100%;} }
+
+/* ==========================================
+   HISTÓRICO E RANKING (NOVO)
+   ========================================== */
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-sm);
+}
+
+.history-entry-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.history-entry-price {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.history-entry-qty {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #25d366;
+  background: rgba(37, 211, 102, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.top-seller-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius);
+  transition: transform 0.2s;
+}
+
+.top-seller-card:hover {
+  transform: translateY(-2px);
+  border-color: #f59e0b;
+}
+
+.top-seller-rank {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #f59e0b;
+  width: 30px;
+  text-align: center;
+}
+
+.top-seller-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+}
+
+.top-seller-info {
+  flex: 1;
+}
+
+.top-seller-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  margin-bottom: 0.2rem;
+}
+
+.top-seller-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.top-seller-score {
+  text-align: right;
+}
+
+.top-seller-score-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #25d366;
+}
+
+.top-seller-score-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}

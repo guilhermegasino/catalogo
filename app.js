@@ -24,6 +24,8 @@ async function savePasswordToCloud(newPass) {
 
 let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategory = "";
 let cart = [];
+let globalPriceHistory = {}; // Armazena histórico de compras/preços
+
 let saleSimulation = new Map();
 let saleSimulationSearch = "";
 let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
@@ -55,6 +57,136 @@ function getBrands() { try { return JSON.parse(localStorage.getItem(BRANDS_KEY) 
 function saveBrands(brands) { localStorage.setItem(BRANDS_KEY, JSON.stringify(brands)); }
 function getCategoryList() { try { return JSON.parse(localStorage.getItem(CATEGORIES_KEY) || "[]"); } catch { return []; } }
 function saveCategoryList(cats) { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cats)); }
+
+// ==========================================
+// HISTÓRICO E RANKING DE COMPRAS
+// ==========================================
+async function loadPriceHistory() {
+  try {
+    const { data, error } = await sbClient.from('settings').select('value').eq('key', 'price_history').single();
+    if (!error && data && data.value) {
+      globalPriceHistory = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+    }
+  } catch (e) {
+    const local = localStorage.getItem('gs2_price_history');
+    if (local) globalPriceHistory = JSON.parse(local);
+  }
+}
+
+async function savePriceHistoryToCloud() {
+  try {
+    localStorage.setItem('gs2_price_history', JSON.stringify(globalPriceHistory));
+    await sbClient.from('settings').upsert({ key: 'price_history', value: JSON.stringify(globalPriceHistory) }, { onConflict: 'key' });
+  } catch (e) {
+    console.error('Erro ao salvar histórico', e);
+  }
+}
+
+function addPriceToHistory(productId, price, quantityAdded) {
+  if (!productId) return false;
+  if (!globalPriceHistory[productId]) {
+    globalPriceHistory[productId] = [];
+  }
+  const history = globalPriceHistory[productId];
+  const today = new Date().toISOString().split('T')[0];
+
+  // Verifica se já tem uma entrada exatamente no mesmo dia com a mesma quantidade e preço
+  // para evitar duplicatas, embora qtyAdded deva acumular.
+  if (history.length > 0) {
+    const lastEntry = history[history.length - 1];
+    if (lastEntry.date === today && lastEntry.price === price && lastEntry.quantityAdded === quantityAdded) return false;
+  }
+
+  history.push({ date: today, price: price, quantityAdded: quantityAdded });
+  savePriceHistoryToCloud();
+  return true;
+}
+
+function openPriceHistoryModal(productId) {
+  const history = globalPriceHistory[productId] || [];
+  const container = document.getElementById("price-history-content");
+  container.innerHTML = "";
+
+  if (history.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding: 2rem 0;"><p>Nenhum registro de compra.</p></div>`;
+  } else {
+    // Reverse order to show newest first
+    [...history].reverse().forEach(entry => {
+      const dateParts = entry.date.split('-');
+      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : entry.date;
+      const div = document.createElement("div");
+      div.className = "history-entry";
+      div.innerHTML = `
+        <div>
+          <div class="history-entry-date">${formattedDate}</div>
+          <div class="history-entry-price">${formatBRL(entry.price || 0)}</div>
+        </div>
+        ${entry.quantityAdded > 0 ? `<div class="history-entry-qty">+${entry.quantityAdded} itens</div>` : ''}
+      `;
+      container.appendChild(div);
+    });
+  }
+  document.getElementById("price-history-modal").classList.add("active");
+}
+
+function openTopSellersModal() {
+  const container = document.getElementById("top-sellers-content");
+  container.innerHTML = "";
+
+  // Calcula o ranking com base nas reposições de quantidade no histórico
+  let ranking = [];
+  Object.keys(globalPriceHistory).forEach(productId => {
+    const history = globalPriceHistory[productId];
+    let totalPurchased = 0;
+    history.forEach(entry => {
+      if (entry.quantityAdded && entry.quantityAdded > 0) {
+        totalPurchased += entry.quantityAdded;
+      }
+    });
+
+    if (totalPurchased > 0) {
+      const product = allProducts.find(p => String(p.id) === String(productId));
+      if (product) {
+        ranking.push({ product, score: totalPurchased });
+      }
+    }
+  });
+
+  ranking.sort((a, b) => b.score - a.score); // Maior para menor
+
+  if (ranking.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding: 2.5rem 1rem;"><p>Não há histórico de reposições de estoque para gerar o ranking ainda.</p></div>`;
+  } else {
+    ranking.forEach((item, index) => {
+      const p = item.product;
+      const catBrand = [p.category, p.brand].filter(Boolean).join(" · ");
+      const div = document.createElement("div");
+      div.className = "top-seller-card";
+      
+      let rankColor = "#f59e0b"; // Ouro
+      if (index === 1) rankColor = "#94a3b8"; // Prata
+      else if (index === 2) rankColor = "#b45309"; // Bronze
+      else if (index > 2) rankColor = "var(--text-muted)";
+
+      div.innerHTML = `
+        <div class="top-seller-rank" style="color: ${rankColor}">${index + 1}º</div>
+        <img src="${p.image}" class="top-seller-thumb" alt="${p.name}">
+        <div class="top-seller-info">
+          <div class="top-seller-title">${p.name}</div>
+          <div class="top-seller-meta">${catBrand || "Sem Categoria"}</div>
+        </div>
+        <div class="top-seller-score">
+          <div class="top-seller-score-val">${item.score}</div>
+          <div class="top-seller-score-lbl">Repostos</div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  document.getElementById("top-sellers-modal").classList.add("active");
+}
+
 
 function renderBrandButtons() {
   const container = document.getElementById("brand-chips-container");
@@ -966,6 +1098,18 @@ function openProductForm(productId) {
   renderCategoryChips();
   updateGenderVisibility();
   updateProfitDisplay();
+  
+  // Controle do botão de histórico de compras
+  const btnHistory = document.getElementById("btn-view-price-history");
+  if (btnHistory) {
+    if (productId && globalPriceHistory[productId] && globalPriceHistory[productId].length > 0) {
+      btnHistory.style.display = "inline-flex";
+      btnHistory.onclick = () => openPriceHistoryModal(productId);
+    } else {
+      btnHistory.style.display = "none";
+    }
+  }
+
   document.getElementById("product-form-modal").classList.add("active");
 }
 
@@ -1002,7 +1146,35 @@ async function handleFormSubmit(event) {
     if (id) {
       productData.id = Number(id);
     }
-    await CatalogDB.save(productData);
+    
+    // Calcula mudança de quantidade (reposição de compras)
+    let qtyAdded = 0;
+    if (id) {
+      const oldProduct = allProducts.find(p => String(p.id) === String(id));
+      const oldQty = oldProduct ? (parseInt(oldProduct.quantity) || 0) : 0;
+      if (productData.quantity > oldQty) {
+        qtyAdded = productData.quantity - oldQty;
+      }
+    } else {
+      qtyAdded = productData.quantity; // Novo produto começa com a qtd atual
+    }
+
+    const savedData = await CatalogDB.save(productData);
+    const finalId = (savedData && savedData[0] && savedData[0].id) ? savedData[0].id : id;
+    
+    // Adicionar reposição/atualização no histórico
+    if (finalId && (qtyAdded > 0 || (globalPriceHistory[finalId] === undefined))) {
+       // Se tem estoque adicionado, ou se é totalmente novo e ainda não tem histórico (mesmo com qty 0)
+       addPriceToHistory(finalId, productData.priceLastPurchase, qtyAdded);
+    } else if (finalId && globalPriceHistory[finalId]) {
+       // Se o preço foi alterado, mas qty não aumentou (apenas ajuste de preço)
+       const history = globalPriceHistory[finalId];
+       if (history.length > 0) {
+         if (history[history.length - 1].price !== productData.priceLastPurchase) {
+           addPriceToHistory(finalId, productData.priceLastPurchase, qtyAdded);
+         }
+       }
+    }
 
     document.getElementById("product-form-modal").classList.remove("active");
     showToast(id ? "Produto atualizado com sucesso!" : "Produto adicionado com sucesso!");
@@ -1079,7 +1251,20 @@ function showToast(message, type = "success") {
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
   await CatalogDB.init();
+  await loadPriceHistory(); // Carrega o histórico de preços
   await loadProductsData();
+
+  // Fechar modais
+  document.getElementById("btn-close-price-history-modal")?.addEventListener("click", () => {
+    document.getElementById("price-history-modal").classList.remove("active");
+  });
+  document.getElementById("btn-close-top-sellers-modal")?.addEventListener("click", () => {
+    document.getElementById("top-sellers-modal").classList.remove("active");
+  });
+
+  // Botão de ranking admin
+  document.getElementById("btn-top-sellers")?.addEventListener("click", openTopSellersModal);
+
 
   // ── BOTÃO PAINEL ADMIN ──
   const adminBtn = document.getElementById("admin-view-toggle-btn");
