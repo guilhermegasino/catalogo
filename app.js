@@ -133,16 +133,11 @@ function openTopSellersModal() {
   const container = document.getElementById("top-sellers-content");
   container.innerHTML = "";
 
-  // Calcula o ranking com base nas reposições de quantidade no histórico
+  // Calcula o ranking com base no número de vezes que o produto teve entrada ou alteração de preço
   let ranking = [];
   Object.keys(globalPriceHistory).forEach(productId => {
     const history = globalPriceHistory[productId];
-    let totalPurchased = 0;
-    history.forEach(entry => {
-      if (entry.quantityAdded && entry.quantityAdded > 0) {
-        totalPurchased += entry.quantityAdded;
-      }
-    });
+    let totalPurchased = history.length;
 
     if (totalPurchased > 0) {
       const product = allProducts.find(p => String(p.id) === String(productId));
