@@ -323,14 +323,17 @@ function applyFiltersAndRender() {
   const productGrid = document.getElementById("product-grid");
   const productListView = document.getElementById("product-list-view");
 
+  // Sempre renderizamos ambos, pois no mobile o CSS (display: grid !important) pode forçar a exibição do grid
+  // mesmo quando o layout atual é "list", garantindo assim que os preços estejam sempre atualizados.
+  renderCatalogGrid();
+  renderCatalogList();
+
   if (currentCatalogLayout === "list") {
     if (productGrid) productGrid.style.display = "none";
     if (productListView) productListView.style.display = "block";
-    renderCatalogList();
   } else {
     if (productGrid) productGrid.style.display = "grid";
     if (productListView) productListView.style.display = "none";
-    renderCatalogGrid();
   }
 
   renderCategoryTabs();
