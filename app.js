@@ -28,7 +28,7 @@ let globalPriceHistory = {}; // Armazena histórico de compras/preços
 
 let saleSimulation = new Map();
 let saleSimulationSearch = "";
-let currentCategory = "all", currentGender = "all", currentBrand = "all", currentSearch = "", currentSort = "default";
+let currentCategory = "all", currentGender = "all", currentBrand = "all", currentAvailability = "all", currentSearch = "", currentSort = "default";
 let adminSortCol = null, adminSortDir = "asc", uploadedImageFile = null, currentPreviewUrl = null;
 let catalogSortCol = null, catalogSortDir = "asc";
 let adminAvailabilityFilter = "all", adminSearchQuery = "";
@@ -228,17 +228,7 @@ function updateGenderVisibility() {
 }
 
 function renderCategoryTabs() {
-  const tabs = document.getElementById("categories-tabs");
-  if (!tabs) return;
-  const uniqueCats = ["all", ...new Set(allProducts.map(p => p.category?.trim()).filter(Boolean))];
-  tabs.innerHTML = "";
-  uniqueCats.forEach(cat => {
-    const btn = document.createElement("button");
-    btn.className = `filter-pill ${currentCategory === cat ? "active" : ""}`;
-    btn.textContent = cat === "all" ? "Todos" : cat;
-    btn.onclick = () => { currentCategory = cat; applyFiltersAndRender(); };
-    tabs.appendChild(btn);
-  });
+  // Filtro de categorias removido (agora exibe sempre "Todos" por padrão)
 }
 
 function renderGenderTabs() {
@@ -264,19 +254,19 @@ function renderGenderTabs() {
 }
 
 function renderBrandFilterTabs() {
-  const tabs = document.getElementById("brand-filter-tabs");
-  if (!tabs) return;
+  const select = document.getElementById("brand-select");
+  if (!select) return;
+  if (select.options.length > 1) return; // Já populado
+  
   const uniqueBrands = [...new Set(allProducts.map(p => p.brand?.trim()).filter(Boolean))].sort();
-  if (uniqueBrands.length === 0) { tabs.style.display = "none"; return; }
-  tabs.style.display = "";
-  uniqueBrands.unshift("all");
-  tabs.innerHTML = "";
+  if (uniqueBrands.length === 0) { select.style.display = "none"; return; }
+  
+  select.style.display = "";
   uniqueBrands.forEach(brand => {
-    const btn = document.createElement("button");
-    btn.className = `filter-chip ${currentBrand === brand ? "active" : ""}`;
-    btn.textContent = brand === "all" ? "Todas" : brand;
-    btn.onclick = () => { currentBrand = brand; applyFiltersAndRender(); };
-    tabs.appendChild(btn);
+    const opt = document.createElement("option");
+    opt.value = brand;
+    opt.textContent = brand;
+    select.appendChild(opt);
   });
 }
 
@@ -298,6 +288,7 @@ function applyFiltersAndRender() {
     (currentCategory === "all" || p.category.toLowerCase() === currentCategory.toLowerCase()) &&
     (currentGender === "all" || (p.gender || "") === currentGender) &&
     (currentBrand === "all" || (p.brand || "") === currentBrand) &&
+    (currentAvailability === "all" || (currentAvailability === "available" ? !p.unavailable : p.unavailable)) &&
     (currentSearch === "" || p.name.toLowerCase().includes(currentSearch.toLowerCase()))
   );
 
@@ -1596,6 +1587,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ── SEARCH ──
   document.getElementById("search-input").addEventListener("input", (e) => {
     currentSearch = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  // ── BRAND & AVAILABILITY SELECTS ──
+  document.getElementById("brand-select")?.addEventListener("change", (e) => {
+    currentBrand = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  document.getElementById("availability-select")?.addEventListener("change", (e) => {
+    currentAvailability = e.target.value;
     applyFiltersAndRender();
   });
 

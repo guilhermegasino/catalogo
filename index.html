@@ -54,22 +54,22 @@
 
     <!-- Controles (Categorias, Filtros, Ordenação) -->
     <section class="controls-bar">
-      <!-- Categorias -->
-      <div class="filter-pills-row">
-        <nav class="filter-pills-nav" id="categories-tabs" aria-label="Categorias de produtos">
-          <button class="filter-pill active" data-category="all">Todos</button>
-        </nav>
-      </div>
-
       <!-- Linha de Filtros Secundários + Ordenação -->
       <div class="filter-secondary-row">
         <div class="filter-chips-group" id="gender-tabs" aria-label="Filtro por gênero"></div>
-        <div class="filter-chips-group" id="brand-filter-tabs" id2="brand-filter-row" aria-label="Filtro por marca" style="display:none;"></div>
         <div class="filter-controls-right">
           <button id="btn-wholesale-share-list" class="btn btn-secondary" style="border-color: #c5a059; color: #c5a059; background: rgba(229,193,88,0.1); display: none;" title="Gerar tabela de atacado para enviar no WhatsApp">
             <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
             <span>Gerar Tabela Atacado</span>
           </button>
+          <select id="brand-select" class="sort-select">
+            <option value="all">Marca: Todas</option>
+          </select>
+          <select id="availability-select" class="sort-select">
+            <option value="all">Disp: Todos</option>
+            <option value="available">Disponível</option>
+            <option value="unavailable">Indisponível</option>
+          </select>
           <select id="sort-select" class="sort-select">
             <option value="default">Relevância</option>
             <option value="price-asc">Menor Preço</option>
