@@ -544,7 +544,87 @@ function updateProfitDisplay() {
   }
 }
 
+function renderAdminKPIs() {
+  const kpiGrid = document.getElementById("admin-kpi-grid");
+  if (!kpiGrid) return;
+
+  let totalQty = 0;
+  let totalProducts = allProducts.length;
+  let totalLastPurchase = 0;
+  let totalWholesale = 0;
+  let totalRetail = 0;
+
+  allProducts.forEach(p => {
+    const qty = parseInt(p.quantity) || 0;
+    const priceLast = (p.priceLastPurchase !== null && p.priceLastPurchase !== undefined && p.priceLastPurchase !== "") 
+      ? parseFloat(p.priceLastPurchase) || 0 
+      : parseFloat(p.priceWholesale) || 0;
+    const priceWholesale = parseFloat(p.priceWholesale) || 0;
+    const priceSuggested = parseFloat(p.priceSuggested) || 0;
+
+    totalQty += qty;
+    totalLastPurchase += qty * priceLast;
+    totalWholesale += qty * priceWholesale;
+    totalRetail += qty * priceSuggested;
+  });
+
+  const totalProfit = totalRetail - totalWholesale;
+  const marginPercent = totalWholesale > 0 ? ((totalProfit / totalWholesale) * 100).toFixed(1) : 0;
+
+  kpiGrid.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">Total em Estoque</span>
+        <div class="kpi-icon-wrap"><i data-lucide="package"></i></div>
+      </div>
+      <div class="kpi-value">${totalQty} <span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">un.</span></div>
+      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-gold">${totalProducts} produtos</span> cadastrados</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">ÚÚltima Compra Total</span>
+        <div class="kpi-icon-wrap"><i data-lucide="shopping-bag"></i></div>
+      </div>
+      <div class="kpi-value">${formatBRL(totalLastPurchase)}</div>
+      <div class="kpi-subtext">Custo pago na última compra</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">Atacado Total (Custo)</span>
+        <div class="kpi-icon-wrap"><i data-lucide="tag"></i></div>
+      </div>
+      <div class="kpi-value">${formatBRL(totalWholesale)}</div>
+      <div class="kpi-subtext">Valor de reposição atual</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">Venda Total (Sugerido)</span>
+        <div class="kpi-icon-wrap" style="background: rgba(34, 197, 94, 0.1); color: #4ade80;"><i data-lucide="dollar-sign"></i></div>
+      </div>
+      <div class="kpi-value" style="color: #4ade80;">${formatBRL(totalRetail)}</div>
+      <div class="kpi-subtext">Valor total potencial</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">Lucro Estimado</span>
+        <div class="kpi-icon-wrap" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa;"><i data-lucide="trending-up"></i></div>
+      </div>
+      <div class="kpi-value" style="color: #60a5fa;">${formatBRL(totalProfit)}</div>
+      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-blue">+${marginPercent}%</span> sobre o atacado</div>
+    </div>
+  `;
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+}
+
 function renderAdminProductsList() {
+  renderAdminKPIs();
   const list = document.getElementById("admin-products-list");
   if (!list) return;
   list.innerHTML = "";

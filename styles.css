@@ -1257,6 +1257,90 @@ main {
   align-items: center;
 }
 
+/* Cards KPI de Resumo Financeiro (Admin) */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-card {
+  background: var(--card-bg, #1e1e24);
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--border-radius-md, 12px);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-gold, #d4af37);
+}
+
+.kpi-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.kpi-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.kpi-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--accent-gold, #d4af37);
+}
+
+.kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main, #f8fafc);
+  font-family: var(--font-heading, sans-serif);
+  line-height: 1.2;
+}
+
+.kpi-subtext {
+  font-size: 0.76rem;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kpi-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.kpi-badge-gold { background: rgba(212, 175, 55, 0.15); color: #eab308; }
+.kpi-badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.kpi-badge-green { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.kpi-badge-orange { background: rgba(249, 115, 22, 0.15); color: #fb923c; }
+
 /* Tabela Administrativa */
 .admin-table-container {
   overflow-x: auto;
@@ -2536,7 +2620,7 @@ footer,
 @media (max-width:760px){ .sale-simulator-summary{grid-template-columns:1fr;} .sale-simulator-footer{align-items:stretch;} .sale-simulator-footer>div{flex-direction:column;width:100%;} }
 
 /* ==========================================
-   HIST”RICO E RANKING (NOVO)
+   HISTRICO E RANKING (NOVO)
    ========================================== */
 .history-entry {
   display: flex;
@@ -2630,4 +2714,155 @@ footer,
   font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
+}
+
+
+/* ==========================================
+   AJUSTES RESPONSIVOS MOBILE (FILTROS & ADMIN)
+   ========================================== */
+@media (max-width: 768px) {
+  /* Admin Filters Bar */
+  .admin-filters-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .admin-filters-bar > div:first-child {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.4rem !important;
+  }
+
+  #admin-availability-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  #admin-availability-tabs .filter-chip {
+    flex-shrink: 0 !important;
+    font-size: 0.75rem !important;
+    padding: 0.4rem 0.85rem !important;
+  }
+
+  .admin-filters-bar .search-bar-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Admin KPI Cards Grid no Mobile (2 colunas organizadas) */
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+    margin-top: 0.75rem !important;
+  }
+
+  .admin-kpi-grid .kpi-card:last-child:nth-child(odd) {
+    grid-column: span 2 !important;
+  }
+
+  .kpi-card {
+    padding: 0.75rem 0.85rem !important;
+    border-radius: 10px !important;
+  }
+
+  .kpi-label {
+    font-size: 0.68rem !important;
+  }
+
+  .kpi-icon-wrap {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .kpi-icon-wrap svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .kpi-value {
+    font-size: 1.05rem !important;
+  }
+
+  .kpi-subtext {
+    font-size: 0.7rem !important;
+  }
+
+  /* Filtros do Cat√°logo no Mobile */
+  .filter-secondary-row {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    align-items: stretch !important;
+  }
+
+  .filter-controls-right {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) auto !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    align-items: center !important;
+  }
+
+  .filter-controls-right .sort-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0.45rem 0.4rem !important;
+    font-size: 0.7rem !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .filter-controls-right #btn-wholesale-share-list {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    justify-content: center !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  /* Tabela de Atacado e Admin no Mobile */
+  .admin-table th,
+  .admin-table td {
+    padding: 0.55rem 0.45rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .admin-prod-thumb {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 6px !important;
+  }
+
+  .wholesale-catalog-table th,
+  .wholesale-catalog-table td {
+    padding: 0.5rem 0.4rem !important;
+    font-size: 0.74rem !important;
+  }
+
+}
+
+@media (max-width: 480px) {
+  .admin-title-group h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .admin-actions-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+  }
+
+  .admin-actions-bar .btn {
+    width: 100% !important;
+    font-size: 0.7rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
 }
