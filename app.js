@@ -549,20 +549,25 @@ function renderAdminKPIs() {
   if (!kpiGrid) return;
 
   let totalQty = 0;
-  let totalProducts = allProducts.length;
+  let totalProductsInStock = 0;
   let totalLastPurchase = 0;
   let totalWholesale = 0;
   let totalRetail = 0;
 
-  allProducts.forEach(p => {
+  // Considera apenas produtos disponíveis e com quantidade em estoque > 0
+  const availableProducts = allProducts.filter(p => !p.unavailable && (parseInt(p.quantity) || 0) > 0);
+
+  availableProducts.forEach(p => {
     const qty = parseInt(p.quantity) || 0;
+    // Se o último preço de compra não tiver sido preenchido, não assume o valor de atacado como fallback
     const priceLast = (p.priceLastPurchase !== null && p.priceLastPurchase !== undefined && p.priceLastPurchase !== "") 
       ? parseFloat(p.priceLastPurchase) || 0 
-      : parseFloat(p.priceWholesale) || 0;
+      : 0;
     const priceWholesale = parseFloat(p.priceWholesale) || 0;
     const priceSuggested = parseFloat(p.priceSuggested) || 0;
 
     totalQty += qty;
+    totalProductsInStock += 1;
     totalLastPurchase += qty * priceLast;
     totalWholesale += qty * priceWholesale;
     totalRetail += qty * priceSuggested;
@@ -578,12 +583,12 @@ function renderAdminKPIs() {
         <div class="kpi-icon-wrap"><i data-lucide="package"></i></div>
       </div>
       <div class="kpi-value">${totalQty} <span style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">un.</span></div>
-      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-gold">${totalProducts} produtos</span> cadastrados</div>
+      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-gold">${totalProductsInStock} produtos</span> em estoque</div>
     </div>
 
     <div class="kpi-card">
       <div class="kpi-card-header">
-        <span class="kpi-label">ÚÚltima Compra Total</span>
+        <span class="kpi-label">Última Compra Total</span>
         <div class="kpi-icon-wrap"><i data-lucide="shopping-bag"></i></div>
       </div>
       <div class="kpi-value">${formatBRL(totalLastPurchase)}</div>
