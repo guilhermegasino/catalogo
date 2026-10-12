@@ -172,6 +172,7 @@
               <th class="admin-th-sort" data-sort="priceSuggested">Sug. Venda <span class="sort-icon">↕</span></th>
               <th class="admin-th-sort" data-sort="profit">Lucro <span class="sort-icon">↕</span></th>
               <th class="admin-th-sort" data-sort="quantity">Qtd. <span class="sort-icon">↕</span></th>
+              <th>Anúncios</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -343,6 +344,21 @@
           <div class="form-group">
             <label for="product-quantity">Quantidade em Estoque</label>
             <input type="number" id="product-quantity" class="form-control" placeholder="0" step="1" min="0">
+          </div>
+
+          <!-- Divulgação / Anúncios em Redes Sociais -->
+          <div class="form-group">
+            <label>Anúncios em Redes Sociais</label>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem;">
+              <label style="display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="product-flag-facebook" style="width: 16px; height: 16px; accent-color: #1877f2;">
+                <span style="color: #1877f2; display: flex; align-items: center; gap: 0.3rem;"><i data-lucide="facebook" style="width: 16px; height: 16px;"></i> Facebook</span>
+              </label>
+              <label style="display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="product-flag-instagram" style="width: 16px; height: 16px; accent-color: #e1306c;">
+                <span style="color: #e1306c; display: flex; align-items: center; gap: 0.3rem;"><i data-lucide="instagram" style="width: 16px; height: 16px;"></i> Instagram</span>
+              </label>
+            </div>
           </div>
 
           <!-- Descrição -->

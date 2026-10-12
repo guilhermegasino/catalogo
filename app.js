@@ -13,13 +13,26 @@ const CATEGORIES_KEY     = "gs2_categories";
 async function getStoredPassword() {
   try {
     const { data, error } = await sbClient.from('settings').select('value').eq('key', 'admin_password').single();
-    if (error || !data) return DEFAULT_ADMIN_PASS;
-    return data.value;
-  } catch { return DEFAULT_ADMIN_PASS; }
+    if (!error && data && data.value) {
+      localStorage.setItem('gs2_admin_password', data.value);
+      return data.value;
+    }
+    const local = localStorage.getItem('gs2_admin_password');
+    if (local) return local;
+    return DEFAULT_ADMIN_PASS;
+  } catch (e) {
+    const local = localStorage.getItem('gs2_admin_password');
+    return local || DEFAULT_ADMIN_PASS;
+  }
 }
 
 async function savePasswordToCloud(newPass) {
-  await sbClient.from('settings').upsert({ key: 'admin_password', value: newPass }, { onConflict: 'key' });
+  localStorage.setItem('gs2_admin_password', newPass);
+  try {
+    await sbClient.from('settings').upsert({ key: 'admin_password', value: newPass }, { onConflict: 'key' });
+  } catch (err) {
+    console.error("Erro ao salvar senha no Supabase:", err);
+  }
 }
 
 let allProducts = [], filteredProducts = [], selectedBrand = "", selectedCategory = "";
@@ -65,11 +78,41 @@ async function loadPriceHistory() {
   try {
     const { data, error } = await sbClient.from('settings').select('value').eq('key', 'price_history').single();
     if (!error && data && data.value) {
-      globalPriceHistory = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      if (parsed && typeof parsed === 'object') {
+        globalPriceHistory = { ...globalPriceHistory, ...parsed };
+      }
     }
   } catch (e) {
-    const local = localStorage.getItem('gs2_price_history');
-    if (local) globalPriceHistory = JSON.parse(local);
+    console.warn('Erro ao buscar histórico do cloud', e);
+  }
+
+  const local = localStorage.getItem('gs2_price_history');
+  if (local) {
+    try {
+      const parsedLocal = JSON.parse(local);
+      if (parsedLocal && typeof parsedLocal === 'object') {
+        globalPriceHistory = { ...parsedLocal, ...globalPriceHistory };
+      }
+    } catch (e) {}
+  }
+
+  // Mescla históricos presentes diretamente nos objetos dos produtos (priceHistory)
+  if (Array.isArray(allProducts)) {
+    allProducts.forEach(product => {
+      if (product && product.id && Array.isArray(product.priceHistory) && product.priceHistory.length > 0) {
+        if (!globalPriceHistory[product.id] || globalPriceHistory[product.id].length === 0) {
+          globalPriceHistory[product.id] = product.priceHistory;
+        } else {
+          // Garante unificação sem perder entradas
+          const existing = globalPriceHistory[product.id];
+          product.priceHistory.forEach(entry => {
+            const hasEntry = existing.some(e => e.date === entry.date && e.price === entry.price && e.quantityAdded === entry.quantityAdded);
+            if (!hasEntry) existing.push(entry);
+          });
+        }
+      }
+    });
   }
 }
 
@@ -90,14 +133,22 @@ function addPriceToHistory(productId, price, quantityAdded) {
   const history = globalPriceHistory[productId];
   const today = new Date().toISOString().split('T')[0];
 
-  // Verifica se já tem uma entrada exatamente no mesmo dia com a mesma quantidade e preço
-  // para evitar duplicatas, embora qtyAdded deva acumular.
+  // Evita duplicatas exatas no mesmo momento
   if (history.length > 0) {
     const lastEntry = history[history.length - 1];
     if (lastEntry.date === today && lastEntry.price === price && lastEntry.quantityAdded === quantityAdded) return false;
   }
 
-  history.push({ date: today, price: price, quantityAdded: quantityAdded });
+  const newEntry = { date: today, price: price, quantityAdded: quantityAdded };
+  history.push(newEntry);
+
+  // Também grava no objeto do produto para salvar no banco de dados de produtos
+  const product = allProducts.find(p => String(p.id) === String(productId));
+  if (product) {
+    product.priceHistory = history;
+    CatalogDB.update(product).catch(err => console.error("Erro ao salvar histórico no produto:", err));
+  }
+
   savePriceHistoryToCloud();
   return true;
 }
@@ -573,8 +624,8 @@ function renderAdminKPIs() {
     totalRetail += qty * priceSuggested;
   });
 
-  const totalProfit = totalRetail - totalWholesale;
-  const marginPercent = totalWholesale > 0 ? ((totalProfit / totalWholesale) * 100).toFixed(1) : 0;
+  const totalProfit = totalRetail - totalLastPurchase;
+  const marginPercent = totalLastPurchase > 0 ? ((totalProfit / totalLastPurchase) * 100).toFixed(1) : 0;
 
   kpiGrid.innerHTML = `
     <div class="kpi-card">
@@ -619,7 +670,7 @@ function renderAdminKPIs() {
         <div class="kpi-icon-wrap" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa;"><i data-lucide="trending-up"></i></div>
       </div>
       <div class="kpi-value" style="color: #60a5fa;">${formatBRL(totalProfit)}</div>
-      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-blue">+${marginPercent}%</span> sobre o atacado</div>
+      <div class="kpi-subtext"><span class="kpi-badge kpi-badge-blue">+${marginPercent}%</span> sobre a última compra</div>
     </div>
   `;
 
@@ -669,7 +720,7 @@ function renderAdminProductsList() {
   }
 
   if (filtered.length === 0) {
-    list.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); font-size:0.9rem;">Nenhum produto encontrado com os filtros selecionados.</td></tr>`;
+    list.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); font-size:0.9rem;">Nenhum produto encontrado com os filtros selecionados.</td></tr>`;
     return;
   }
 
@@ -679,6 +730,9 @@ function renderAdminProductsList() {
     const hasPurchase = product.priceLastPurchase > 0;
     const profitClass = hasPurchase ? (profit > 0 ? 'profit-positive' : profit < 0 ? 'profit-negative' : '') : '';
     const isOutOfStock = product.unavailable || (parseInt(product.quantity) || 0) <= 0;
+
+    const isFb = !!(product.postedFacebook || product.posted_facebook);
+    const isInsta = !!(product.postedInstagram || product.posted_instagram);
 
     const tr = document.createElement("tr");
     if (product.inTransit) tr.style.background = "rgba(251, 146, 60, 0.06)";
@@ -695,8 +749,25 @@ function renderAdminProductsList() {
       </td>
       <td style="font-weight:700; ${isOutOfStock && !product.inTransit ? 'color: var(--danger);' : product.inTransit ? 'color: #f97316;' : ''}">${product.quantity || 0}</td>
       <td>
+        <div class="social-flag-group">
+          <button type="button" class="social-flag-badge facebook ${isFb ? 'active' : ''}" 
+                  title="${isFb ? 'Anunciado no Facebook (Clique para alternar)' : 'Não anunciado no Facebook (Clique para alternar)'}" 
+                  onclick="event.stopPropagation(); handleToggleFacebook('${product.id}')">
+            <span>${isFb ? '✓ FB' : '+ FB'}</span>
+          </button>
+          <button type="button" class="social-flag-badge instagram ${isInsta ? 'active' : ''}" 
+                  title="${isInsta ? 'Anunciado no Instagram (Clique para alternar)' : 'Não anunciado no Instagram (Clique para alternar)'}" 
+                  onclick="event.stopPropagation(); handleToggleInstagram('${product.id}')">
+            <span>${isInsta ? '✓ IG' : '+ IG'}</span>
+          </button>
+        </div>
+      </td>
+      <td>
         <div class="admin-actions">
           <button class="btn-icon-only" title="Editar" onclick="openProductForm('${product.id}')"><i data-lucide="edit-2" style="width:15px;height:15px;"></i></button>
+          <button class="btn-icon-only" title="Histórico de Compras" onclick="openPriceHistoryModal('${product.id}')" style="color: var(--accent-blue);">
+            <i data-lucide="history" style="width:15px;height:15px;"></i>
+          </button>
           <button class="btn-icon-only" title="${product.unavailable ? 'Marcar como Disponível' : 'Marcar como Sem Estoque'}" onclick="handleToggleAvailability('${product.id}')" style="${product.unavailable ? 'background: rgba(224, 92, 92, 0.25); border-color: var(--danger); color: var(--danger);' : ''}">
             <i data-lucide="${product.unavailable ? 'eye-off' : 'eye'}" style="width:15px;height:15px;"></i>
           </button>
@@ -1162,10 +1233,16 @@ function openProductForm(productId) {
     // Gender button state
     document.getElementById("btn-gender-masc").classList.toggle("active", product.gender === "Masculino");
     document.getElementById("btn-gender-fem").classList.toggle("active", product.gender === "Feminino");
+
+    // Social Announcement Flags
+    document.getElementById("product-flag-facebook").checked = !!(product.postedFacebook || product.posted_facebook);
+    document.getElementById("product-flag-instagram").checked = !!(product.postedInstagram || product.posted_instagram);
   } else {
     document.getElementById("form-modal-title").textContent = "Adicionar Novo Produto";
     document.getElementById("btn-gender-masc").classList.remove("active");
     document.getElementById("btn-gender-fem").classList.remove("active");
+    document.getElementById("product-flag-facebook").checked = false;
+    document.getElementById("product-flag-instagram").checked = false;
   }
 
   renderBrandButtons();
@@ -1204,6 +1281,8 @@ async function handleFormSubmit(event) {
     priceMarketAvg: parseFloat(document.getElementById("product-price-market-avg").value) || 0,
     priceSuggested: parseFloat(document.getElementById("product-price-suggested").value) || 0,
     quantity: parseInt(document.getElementById("product-quantity").value) || 0,
+    postedFacebook: document.getElementById("product-flag-facebook").checked,
+    postedInstagram: document.getElementById("product-flag-instagram").checked,
     description: document.getElementById("product-desc").value,
     image: currentPreviewUrl || ""
   };
@@ -1299,12 +1378,86 @@ async function handleToggleTransit(id) {
 
   try {
     await CatalogDB.save(product);
-    showToast(product.inTransit ? "✈️ Produto marcado como Em Trânsito! Removido da lista de compras." : "Trânsito cancelado. Produto voltou à lista de compras.");
+    showToast(product.inTransit ? "Produto marcado como Em Trânsito!" : "Trânsito cancelado!");
     await loadProductsData();
   } catch (error) {
     console.error("Erro ao alterar trânsito:", error);
     const msg = error?.message || error?.details || JSON.stringify(error);
     showToast("Falha ao atualizar trânsito: " + msg, "error");
+  }
+}
+
+async function handleToggleFacebook(id) {
+  const product = allProducts.find(p => String(p.id) === String(id));
+  if (!product) return;
+
+  const currentStatus = !!(product.postedFacebook || product.posted_facebook);
+  const newStatus = !currentStatus;
+
+  // Atualiza localmente no objeto
+  product.postedFacebook = newStatus;
+  product.posted_facebook = newStatus;
+
+  try {
+    // Tenta update direto só do campo no Supabase
+    const { error } = await sbClient.from('products')
+      .update({ posted_facebook: newStatus })
+      .eq('id', product.id);
+
+    if (error) {
+      // Coluna pode não existir ainda — tenta upsert completo sem ela
+      console.warn('Coluna posted_facebook não encontrada, salvando via upsert completo:', error.message);
+      const cleanProduct = { ...product };
+      delete cleanProduct.postedFacebook;
+      delete cleanProduct.posted_facebook;
+      delete cleanProduct.postedInstagram;
+      delete cleanProduct.posted_instagram;
+      delete cleanProduct.priceHistory;
+      await sbClient.from('products').upsert(cleanProduct);
+    }
+
+    showToast(newStatus ? "👍 Marcado como anunciado no Facebook!" : "Desmarcado anúncio no Facebook.");
+    renderAdminProductsList();
+  } catch (error) {
+    console.error("Erro ao alterar status Facebook:", error);
+    showToast("Falha ao atualizar anúncio Facebook", "error");
+  }
+}
+
+async function handleToggleInstagram(id) {
+  const product = allProducts.find(p => String(p.id) === String(id));
+  if (!product) return;
+
+  const currentStatus = !!(product.postedInstagram || product.posted_instagram);
+  const newStatus = !currentStatus;
+
+  // Atualiza localmente no objeto
+  product.postedInstagram = newStatus;
+  product.posted_instagram = newStatus;
+
+  try {
+    // Tenta update direto só do campo no Supabase
+    const { error } = await sbClient.from('products')
+      .update({ posted_instagram: newStatus })
+      .eq('id', product.id);
+
+    if (error) {
+      // Coluna pode não existir ainda — tenta upsert completo sem ela
+      console.warn('Coluna posted_instagram não encontrada, salvando via upsert completo:', error.message);
+      const cleanProduct = { ...product };
+      delete cleanProduct.postedFacebook;
+      delete cleanProduct.posted_facebook;
+      delete cleanProduct.postedInstagram;
+      delete cleanProduct.posted_instagram;
+      delete cleanProduct.priceHistory;
+      await sbClient.from('products').upsert(cleanProduct);
+    }
+
+    showToast(newStatus ? "📸 Marcado como anunciado no Instagram!" : "Desmarcado anúncio no Instagram.");
+    renderAdminProductsList();
+  } catch (error) {
+    console.error("Erro ao alterar status Instagram:", error);
+    showToast("Falha ao atualizar anúncio Instagram", "error");
   }
 }
 
@@ -1321,10 +1474,36 @@ function showToast(message, type = "success") {
 }
 
 // ==========================================
+// VERIFICAÇÃO / CRIAÇÃO DE COLUNAS DE REDES SOCIAIS
+// ==========================================
+async function ensureSocialColumns() {
+  try {
+    // Tenta fazer um select de apenas 1 produto para ver se os campos existem
+    const { data, error } = await sbClient
+      .from('products')
+      .select('id, posted_facebook, posted_instagram')
+      .limit(1);
+
+    if (error && error.message && error.message.includes('column')) {
+      // Coluna não existe — cria via SQL (requer permissão de service role, pode não funcionar com anon key)
+      // Nesse caso, salvamos apenas os campos que o Supabase aceita
+      console.warn('Colunas posted_facebook / posted_instagram ausentes. Tente criar manualmente no Supabase.');
+    }
+    // Se não deu erro, colunas já existem — nada a fazer
+  } catch (e) {
+    console.warn('Erro ao verificar colunas de redes sociais:', e);
+  }
+}
+
+// ==========================================
 // INICIALIZAÇÃO E EVENT LISTENERS
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
   await CatalogDB.init();
+
+  // Garantir que as colunas de redes sociais existem no Supabase
+  await ensureSocialColumns();
+
   await loadPriceHistory(); // Carrega o histórico de preços
   await loadProductsData();
 
