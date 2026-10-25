@@ -1281,8 +1281,8 @@ async function handleFormSubmit(event) {
     priceMarketAvg: parseFloat(document.getElementById("product-price-market-avg").value) || 0,
     priceSuggested: parseFloat(document.getElementById("product-price-suggested").value) || 0,
     quantity: parseInt(document.getElementById("product-quantity").value) || 0,
-    postedFacebook: document.getElementById("product-flag-facebook").checked,
-    postedInstagram: document.getElementById("product-flag-instagram").checked,
+    posted_facebook: document.getElementById("product-flag-facebook").checked,
+    posted_instagram: document.getElementById("product-flag-instagram").checked,
     description: document.getElementById("product-desc").value,
     image: currentPreviewUrl || ""
   };
@@ -1478,18 +1478,18 @@ function showToast(message, type = "success") {
 // ==========================================
 async function ensureSocialColumns() {
   try {
-    // Tenta fazer um select de apenas 1 produto para ver se os campos existem
-    const { data, error } = await sbClient
+    const { error } = await sbClient
       .from('products')
       .select('id, posted_facebook, posted_instagram')
       .limit(1);
 
-    if (error && error.message && error.message.includes('column')) {
-      // Coluna não existe — cria via SQL (requer permissão de service role, pode não funcionar com anon key)
-      // Nesse caso, salvamos apenas os campos que o Supabase aceita
-      console.warn('Colunas posted_facebook / posted_instagram ausentes. Tente criar manualmente no Supabase.');
+    if (error && error.message && (error.message.includes('column') || error.message.includes('schema cache'))) {
+      console.warn('⚠️ Colunas posted_facebook / posted_instagram não existem no Supabase.');
+      // Avisa o admin visualmente (aparece depois que o DOM estiver pronto)
+      setTimeout(() => {
+        showToast('⚠️ Execute o SQL no Supabase para habilitar as flags de Facebook e Instagram!', 'error');
+      }, 2000);
     }
-    // Se não deu erro, colunas já existem — nada a fazer
   } catch (e) {
     console.warn('Erro ao verificar colunas de redes sociais:', e);
   }
